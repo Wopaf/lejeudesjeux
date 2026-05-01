@@ -21,10 +21,10 @@ const JEUX = [
     { nom: "Dungeon Siège", img: "medias-lejeudesjeux/dungeonsiege.png", couleur: "#a855f7" },
     { nom: "Castlevania: Aria of Sorrow", img: "medias-lejeudesjeux/castelvania.png", couleur: "#ec4899" },
     { nom: "Kingdom Hearts III", img: "medias-lejeudesjeux/kingdown.png", couleur: "#f97316" },
-    { nom: "Jeu 5", img: null, couleur: "#eab308" },
-    { nom: "Jeu 6", img: null, couleur: "#22c55e" },
-    { nom: "Jeu 7", img: null, couleur: "#06b6d4" },
-    { nom: "Jeu 8", img: null, couleur: "#3b82f6" },
+    { nom: "Have a Nice Death", img: "medias-lejeudesjeux/have.png", couleur: "#eab308" },
+    { nom: "Dead Island 2", img: "medias-lejeudesjeux/dead.png", couleur: "#22c55e" },
+    { nom: "Gorogoa", img: "medias-lejeudesjeux/gorogoa.png", couleur: "#06b6d4" },
+    { nom: "Jeu 8", img: "medias-lejeudesjeux/kingdown.png", couleur: "#3b82f6" },
 ];
 
 // ============================================================
@@ -80,7 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sauvegarder si la page se ferme pendant que le timer tourne
     window.addEventListener('beforeunload', () => {
-        if (timerRunning) saveCurrentTimer();
+        if (timerRunning) {
+            saveCurrentTimer();
+            // Mettre à jour startedAt à maintenant : le timer est déjà sauvegardé,
+            // donc au rechargement l'elapsed calculé sera ~0 et non doublé
+            db.ref(`jeudesjeux/${currentUser}/startedAt`).set(Date.now());
+        }
     });
 
     // Utilisateur déjà choisi ?
@@ -116,6 +121,26 @@ function setUser(user) {
     loadTimers();
 }
 
+let resetConfirmTimeout = null;
+
+function handleResetSaves() {
+    const btn = document.getElementById('reset-saves-btn');
+    if (!btn.classList.contains('confirm')) {
+        btn.classList.add('confirm');
+        btn.textContent = 'Confirmer la réinitialisation ?';
+        resetConfirmTimeout = setTimeout(() => {
+            btn.classList.remove('confirm');
+            btn.textContent = 'Réinitialiser les sauvegardes';
+        }, 3000);
+    } else {
+        clearTimeout(resetConfirmTimeout);
+        btn.classList.remove('confirm');
+        btn.textContent = 'Réinitialiser les sauvegardes';
+        db.ref('jeudesjeux').remove()
+          .catch(err => console.error('Firebase reset error:', err));
+    }
+}
+
 function resetApp() {
     // Détacher le listener AVANT de nullifier currentUser
     if (fbListener && currentUser) {
@@ -131,19 +156,45 @@ function resetApp() {
 //  FIREBASE — Chargement des timers
 // ============================================================
 function loadTimers() {
-    // Détacher l'ancien listener si existant
     if (fbListener) {
         db.ref(`jeudesjeux/${currentUser}`).off('value', fbListener);
     }
 
     fbListener = db.ref(`jeudesjeux/${currentUser}`).on('value', snap => {
         const data = snap.val() || {};
+
+        // Timers des jeux (ne pas écraser le jeu en cours de timer)
         for (let i = 0; i < 8; i++) {
-            // Ne pas écraser la valeur locale du jeu en cours de timer
             if (!(timerRunning && i === selectedJeu)) {
                 timers[i] = data[i] || 0;
             }
         }
+
+        // Restaurer le jeu sélectionné depuis Firebase
+        if (!timerRunning && data.selectedJeu != null) {
+            selectedJeu = data.selectedJeu;
+            localStorage.setItem('jdj_selected', selectedJeu);
+        }
+
+        // Reprendre le timer si il était lancé
+        if (!timerRunning && data.startedAt) {
+            const elapsed = Math.floor((Date.now() - data.startedAt) / 1000);
+            timers[selectedJeu] = (data[selectedJeu] || 0) + elapsed;
+            // Sauvegarder le temps récupéré et réinitialiser startedAt
+            db.ref(`jeudesjeux/${currentUser}/${selectedJeu}`).set(timers[selectedJeu]);
+            db.ref(`jeudesjeux/${currentUser}/startedAt`).set(Date.now());
+            // Démarrer l'intervalle sans ré-écrire startedAt
+            timerRunning = true;
+            timerInterval = setInterval(() => {
+                timers[selectedJeu]++;
+                const footerEl = document.getElementById('footer-timer-val');
+                if (footerEl) footerEl.textContent = formatTime(timers[selectedJeu]);
+                const cardTimer = document.querySelector(`.game-card[data-index="${selectedJeu}"] .game-card-timer`);
+                if (cardTimer) cardTimer.textContent = formatTime(timers[selectedJeu]);
+            }, 1000);
+            saveInterval = setInterval(saveCurrentTimer, 30_000);
+        }
+
         renderJeux();
         updateFooter();
     });
@@ -151,7 +202,9 @@ function loadTimers() {
 
 function saveCurrentTimer() {
     if (selectedJeu === null || !currentUser) return;
-    db.ref(`jeudesjeux/${currentUser}/${selectedJeu}`).set(timers[selectedJeu]);
+    db.ref(`jeudesjeux/${currentUser}/${selectedJeu}`)
+      .set(timers[selectedJeu])
+      .catch(err => console.error('Firebase save error:', err));
 }
 
 // ============================================================
@@ -265,9 +318,11 @@ function updateFooter() {
 //  SÉLECTION D'UN JEU
 // ============================================================
 function selectJeu(index) {
-    if (timerRunning) return; // Impossible de changer pendant que le timer tourne
+    if (timerRunning) return;
     selectedJeu = index;
     localStorage.setItem('jdj_selected', index);
+    db.ref(`jeudesjeux/${currentUser}/selectedJeu`).set(index)
+      .catch(err => console.error('Firebase error:', err));
     renderJeux();
     updateFooter();
 }
@@ -294,6 +349,9 @@ function startTimer() {
 
     // Sauvegarde automatique toutes les 30 secondes
     saveInterval = setInterval(saveCurrentTimer, 30_000);
+
+    db.ref(`jeudesjeux/${currentUser}/startedAt`).set(Date.now())
+      .catch(err => console.error('Firebase error:', err));
 }
 
 function showConfirm() {
@@ -324,6 +382,9 @@ function stopTimer() {
     clearInterval(saveInterval);
     timerInterval = null;
     saveInterval  = null;
+
+    db.ref(`jeudesjeux/${currentUser}/startedAt`).remove()
+      .catch(err => console.error('Firebase error:', err));
 
     saveCurrentTimer();
     updateFooter();

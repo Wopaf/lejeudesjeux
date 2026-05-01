@@ -146,6 +146,24 @@ button {
     color: var(--text);
 }
 
+.reset-saves-btn {
+    margin-top: 16px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.15s;
+}
+
+.reset-saves-btn:hover {
+    color: #ef4444;
+}
+
+.reset-saves-btn.confirm {
+    color: #ef4444;
+}
+
 /* ============================================================
    APP LAYOUT
    ============================================================ */
