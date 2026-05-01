@@ -22,26 +22,25 @@ const VERSION = '0.1.1';
 //  CONFIGURATION — Modifie ce tableau pour personnaliser les jeux
 // ============================================================
 const JEUX = [
-    { nom: "Super Meat Boy", img: "medias-lejeudesjeux/meatboy.png", couleur: "#7c5cfc" },
-    { nom: "Dungeon Siège", img: "medias-lejeudesjeux/dungeonsiege.png", couleur: "#a855f7" },
+    { nom: "Super Meat Boy",           img: "medias-lejeudesjeux/meatboy.png",      couleur: "#7c5cfc" },
+    { nom: "Dungeon Siège",            img: "medias-lejeudesjeux/dungeonsiege.png", couleur: "#a855f7" },
     { nom: "Castlevania: Aria of Sorrow", img: "medias-lejeudesjeux/castelvania.png", couleur: "#ec4899" },
-    { nom: "Kingdom Hearts III", img: "medias-lejeudesjeux/kingdown.png", couleur: "#f97316" },
-    { nom: "Have a Nice Death", img: "medias-lejeudesjeux/have.png", couleur: "#eab308" },
-    { nom: "Dead Island 2", img: "medias-lejeudesjeux/dead.png", couleur: "#22c55e" },
-    { nom: "Gorogoa", img: "medias-lejeudesjeux/gorogoa.png", couleur: "#06b6d4" },
+    { nom: "Kingdom Hearts III",       img: "medias-lejeudesjeux/kingdown.png",     couleur: "#f97316" },
+    { nom: "Have a Nice Death",        img: "medias-lejeudesjeux/have.png",         couleur: "#eab308" },
+    { nom: "Dead Island 2",            img: "medias-lejeudesjeux/dead.png",         couleur: "#22c55e" },
+    { nom: "Gorogoa",                  img: "medias-lejeudesjeux/gorogoa.png",      couleur: "#06b6d4" },
 ];
 
 // ============================================================
 //  ÉTAT
 // ============================================================
-let currentUser    = null;   // 'matthias' | 'valentin'
-let selectedJeu    = null;   // index 0-7
-let timers         = new Array(8).fill(0); // secondes par jeu
-let timerRunning   = false;
-let timerInterval  = null;
-let saveInterval   = null;
-let fbListener     = null;
-let localStartedAt = null;   // timestamp écrit par CET appareil, pour détecter conflits
+let currentUser  = null;
+let selectedJeu  = null;
+let timers       = new Array(JEUX.length).fill(0); // valeurs accumulées Firebase
+let timerRunning = false;
+let startedAt    = null;   // timestamp (ms) du démarrage de la session en cours
+let liveInterval = null;   // mise à jour du compteur live dans le footer
+let fbListener   = null;
 
 // ============================================================
 //  INIT
@@ -55,12 +54,10 @@ document.addEventListener('click', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('app-version').textContent = `v${VERSION}`;
 
-    // Sélection dans la modal
     document.querySelectorAll('.user-choice-btn').forEach(btn => {
         btn.addEventListener('click', () => setUser(btn.dataset.user));
     });
 
-    // Badge header → changer d'utilisateur
     document.getElementById('user-badge').addEventListener('click', () => {
         if (timerRunning) stopTimer();
         resetApp();
@@ -68,16 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('user-modal').classList.remove('hidden');
     });
 
-    // Bouton lancer / arrêter
     document.getElementById('launch-btn').addEventListener('click', () => {
-        if (timerRunning) {
-            stopTimer();
-        } else {
-            showConfirm();
-        }
+        if (timerRunning) stopTimer();
+        else showConfirm();
     });
 
-    // Modal confirmation
     document.getElementById('confirm-cancel').addEventListener('click', hideConfirm);
     document.querySelector('.confirm-overlay').addEventListener('click', hideConfirm);
     document.getElementById('confirm-ok').addEventListener('click', () => {
@@ -85,16 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
         startTimer();
     });
 
-    // Sauvegarder si la page se ferme pendant que le timer tourne
-    window.addEventListener('beforeunload', () => {
-        if (timerRunning) saveCurrentTimer();
-    });
-
-    // Utilisateur déjà choisi ?
     const savedUser = localStorage.getItem('jdj_user');
-    if (savedUser) {
-        setUser(savedUser);
-    }
+    if (savedUser) setUser(savedUser);
 });
 
 // ============================================================
@@ -106,21 +90,21 @@ function setUser(user) {
 
     const initial = user.charAt(0).toUpperCase();
     document.getElementById('user-badge-avatar').textContent = initial;
-    document.getElementById('user-badge-name').textContent = initial + user.slice(1);
+    document.getElementById('user-badge-name').textContent   = initial + user.slice(1);
 
     document.getElementById('user-modal').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
 
-    // Restaurer la sélection de jeu sauvegardée
+    // Affichage rapide avant Firebase
     const saved = localStorage.getItem('jdj_selected');
     selectedJeu = saved !== null ? parseInt(saved) : null;
+    if (selectedJeu !== null && selectedJeu >= JEUX.length) selectedJeu = null;
 
-    // Affichage immédiat des jeux (timers à 0), mis à jour quand Firebase répond
-    timers = new Array(8).fill(0);
+    timers = new Array(JEUX.length).fill(0);
     renderJeux();
     updateFooter();
 
-    loadTimers();
+    loadFromFirebase();
 }
 
 let resetConfirmTimeout = null;
@@ -139,7 +123,7 @@ function handleResetSaves() {
         btn.classList.remove('confirm');
         btn.textContent = 'Réinitialiser les sauvegardes';
         if (timerRunning) stopTimer();
-        timers = new Array(8).fill(0);
+        timers      = new Array(JEUX.length).fill(0);
         selectedJeu = null;
         localStorage.removeItem('jdj_selected');
         renderJeux();
@@ -154,16 +138,18 @@ function resetApp() {
         db.ref(`jeudesjeux/${currentUser}`).off('value', fbListener);
         fbListener = null;
     }
-    currentUser    = null;
-    timers         = new Array(8).fill(0);
-    selectedJeu    = null;
-    localStartedAt = null;
+    _stopLiveInterval();
+    currentUser  = null;
+    timers       = new Array(JEUX.length).fill(0);
+    selectedJeu  = null;
+    timerRunning = false;
+    startedAt    = null;
 }
 
 // ============================================================
-//  FIREBASE — Chargement des timers
+//  FIREBASE
 // ============================================================
-function loadTimers() {
+function loadFromFirebase() {
     if (fbListener) {
         db.ref(`jeudesjeux/${currentUser}`).off('value', fbListener);
     }
@@ -171,45 +157,31 @@ function loadTimers() {
     fbListener = db.ref(`jeudesjeux/${currentUser}`).on('value', snap => {
         const data = snap.val() || {};
 
-        // Un autre appareil a pris le contrôle du timer → on arrête le nôtre
-        if (timerRunning && data.startedAt !== localStartedAt) {
-            timerRunning   = false;
-            localStartedAt = null;
-            clearInterval(timerInterval);
-            clearInterval(saveInterval);
-            timerInterval = null;
-            saveInterval  = null;
+        // Timers accumulés → affichage des cartes (pas le live)
+        for (let i = 0; i < JEUX.length; i++) {
+            timers[i] = data[i] || 0;
         }
 
-        // Timers des jeux (ne pas écraser le jeu en cours de timer)
-        for (let i = 0; i < 8; i++) {
-            if (!(timerRunning && i === selectedJeu)) {
-                timers[i] = data[i] || 0;
-            }
-        }
-
-        // Restaurer le jeu sélectionné depuis Firebase
+        // Jeu sélectionné (ne pas écraser pendant une session active)
         if (!timerRunning && data.selectedJeu != null) {
             selectedJeu = data.selectedJeu;
             localStorage.setItem('jdj_selected', selectedJeu);
         }
 
-        // Reprendre le timer si il était lancé
-        if (!timerRunning && data.startedAt) {
-            const elapsed = Math.floor((Date.now() - data.startedAt) / 1000);
-            timers[selectedJeu] = (data[selectedJeu] || 0) + elapsed;
-            db.ref(`jeudesjeux/${currentUser}/${selectedJeu}`).set(timers[selectedJeu]);
-            localStartedAt = Date.now(); // AVANT le set pour éviter faux-positif
-            db.ref(`jeudesjeux/${currentUser}/startedAt`).set(localStartedAt);
-            timerRunning  = true;
-            timerInterval = setInterval(() => {
-                timers[selectedJeu]++;
-                const footerEl = document.getElementById('footer-timer-val');
-                if (footerEl) footerEl.textContent = formatTime(timers[selectedJeu]);
-                const cardTimer = document.querySelector(`.game-card[data-index="${selectedJeu}"] .game-card-timer`);
-                if (cardTimer) cardTimer.textContent = formatTime(timers[selectedJeu]);
-            }, 1000);
-            saveInterval = setInterval(saveCurrentTimer, 30_000);
+        // Synchronisation état du timer
+        const fbActive    = !!data.timerActive;
+        const fbStartedAt = data.startedAt || null;
+
+        if (fbActive && !timerRunning && fbStartedAt) {
+            // Timer actif (rechargement de page ou autre appareil)
+            startedAt    = fbStartedAt;
+            timerRunning = true;
+            _startLiveInterval();
+        } else if (!fbActive && timerRunning) {
+            // Timer arrêté depuis un autre appareil
+            _stopLiveInterval();
+            timerRunning = false;
+            startedAt    = null;
         }
 
         renderJeux();
@@ -217,21 +189,19 @@ function loadTimers() {
     });
 }
 
-function saveCurrentTimer() {
-    if (selectedJeu === null || !currentUser) return;
-    if (timerRunning) {
-        // Sauvegarde atomique timer + startedAt pour éviter le double-comptage au rechargement
-        const now = Date.now();
-        localStartedAt = now;
-        db.ref(`jeudesjeux/${currentUser}`).update({
-            [selectedJeu]: timers[selectedJeu],
-            startedAt: now,
-        }).catch(err => console.error('Firebase save error:', err));
-    } else {
-        db.ref(`jeudesjeux/${currentUser}/${selectedJeu}`)
-          .set(timers[selectedJeu])
-          .catch(err => console.error('Firebase save error:', err));
-    }
+function _startLiveInterval() {
+    clearInterval(liveInterval);
+    liveInterval = setInterval(() => {
+        if (!timerRunning || startedAt === null) return;
+        const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+        const el = document.getElementById('footer-timer-val');
+        if (el) el.textContent = formatTime(elapsed);
+    }, 1000);
+}
+
+function _stopLiveInterval() {
+    clearInterval(liveInterval);
+    liveInterval = null;
 }
 
 // ============================================================
@@ -246,11 +216,8 @@ function renderJeux() {
         const isRunning  = isSelected && timerRunning;
 
         const card = document.createElement('div');
-        card.className = [
-            'game-card',
-            isSelected ? 'selected' : '',
-            isRunning  ? 'running'  : '',
-        ].filter(Boolean).join(' ');
+        card.className = ['game-card', isSelected ? 'selected' : '', isRunning ? 'running' : '']
+            .filter(Boolean).join(' ');
         card.dataset.index = i;
         if (isSelected) card.style.setProperty('--card-accent', jeu.couleur);
 
@@ -282,7 +249,6 @@ function updateDistribution() {
 
     const total = timers.reduce((sum, t) => sum + t, 0);
     bar.innerHTML = '';
-
     if (total === 0) return;
 
     JEUX.forEach((jeu, i) => {
@@ -290,17 +256,16 @@ function updateDistribution() {
         const pct = (timers[i] / total) * 100;
         const seg = document.createElement('div');
         seg.className = 'time-dist-segment' + (i === selectedJeu && timerRunning ? ' active' : '');
-        seg.style.width = pct + '%';
+        seg.style.width      = pct + '%';
         seg.style.background = jeu.couleur;
 
         seg.addEventListener('click', (e) => {
             e.stopPropagation();
             const tooltip = document.getElementById('dist-tooltip');
-            document.getElementById('dist-tooltip-name').textContent = jeu.nom;
+            document.getElementById('dist-tooltip-name').textContent  = jeu.nom;
             document.getElementById('dist-tooltip-timer').textContent = formatTime(timers[i]);
             tooltip.style.left = e.clientX + 'px';
             tooltip.style.top  = (e.clientY - 10) + 'px';
-            // Forcer la réanimation
             tooltip.classList.add('hidden');
             requestAnimationFrame(() => tooltip.classList.remove('hidden'));
         });
@@ -310,27 +275,29 @@ function updateDistribution() {
 }
 
 function updateFooter() {
-    const nameEl    = document.getElementById('footer-selected-name');
-    const timerEl   = document.getElementById('footer-timer-val');
-    const btn       = document.getElementById('launch-btn');
-    const btnIcon   = document.getElementById('launch-btn-icon');
-    const btnLabel  = document.getElementById('launch-btn-label');
+    const nameEl   = document.getElementById('footer-selected-name');
+    const timerEl  = document.getElementById('footer-timer-val');
+    const btn      = document.getElementById('launch-btn');
+    const btnIcon  = document.getElementById('launch-btn-icon');
+    const btnLabel = document.getElementById('launch-btn-label');
 
     if (selectedJeu !== null) {
         nameEl.textContent = JEUX[selectedJeu].nom;
-        timerEl.textContent = formatTime(timers[selectedJeu]);
         btn.disabled = false;
 
-        if (timerRunning) {
+        if (timerRunning && startedAt !== null) {
+            const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+            timerEl.textContent  = formatTime(elapsed);
+            timerEl.classList.add('running');
             btnIcon.textContent  = '⏹';
             btnLabel.textContent = 'Arrêter le timer';
             btn.classList.add('running');
-            timerEl.classList.add('running');
         } else {
+            timerEl.textContent  = formatTime(timers[selectedJeu]);
+            timerEl.classList.remove('running');
             btnIcon.textContent  = '▶';
             btnLabel.textContent = 'Lancer le timer';
             btn.classList.remove('running');
-            timerEl.classList.remove('running');
         }
     } else {
         nameEl.textContent  = '—';
@@ -360,26 +327,38 @@ function selectJeu(index) {
 function startTimer() {
     if (selectedJeu === null) return;
 
+    const now    = Date.now();
+    startedAt    = now;
     timerRunning = true;
+
+    db.ref(`jeudesjeux/${currentUser}`).update({
+        timerActive: true,
+        startedAt:   now,
+    }).catch(err => console.error('Firebase error:', err));
+
+    _startLiveInterval();
     updateFooter();
     renderJeux();
+}
 
-    // Incrément chaque seconde
-    timerInterval = setInterval(() => {
-        timers[selectedJeu]++;
+function stopTimer() {
+    if (!timerRunning || selectedJeu === null || startedAt === null) return;
 
-        // Mise à jour légère (sans re-render complet)
-        document.getElementById('footer-timer-val').textContent = formatTime(timers[selectedJeu]);
-        const cardTimer = document.querySelector(`.game-card[data-index="${selectedJeu}"] .game-card-timer`);
-        if (cardTimer) cardTimer.textContent = formatTime(timers[selectedJeu]);
-    }, 1000);
+    const diff = Math.floor((Date.now() - startedAt) / 1000);
+    timers[selectedJeu] += diff;
 
-    // Sauvegarde automatique toutes les 30 secondes
-    saveInterval = setInterval(saveCurrentTimer, 30_000);
+    _stopLiveInterval();
+    timerRunning = false;
+    startedAt    = null;
 
-    localStartedAt = Date.now(); // AVANT le set pour éviter faux-positif
-    db.ref(`jeudesjeux/${currentUser}/startedAt`).set(localStartedAt)
-      .catch(err => console.error('Firebase error:', err));
+    db.ref(`jeudesjeux/${currentUser}`).update({
+        [selectedJeu]: timers[selectedJeu],
+        timerActive:   false,
+        startedAt:     null,
+    }).catch(err => console.error('Firebase error:', err));
+
+    updateFooter();
+    renderJeux();
 }
 
 function showConfirm() {
@@ -402,22 +381,6 @@ function showConfirm() {
 
 function hideConfirm() {
     document.getElementById('confirm-modal').classList.add('hidden');
-}
-
-function stopTimer() {
-    timerRunning = false;
-    clearInterval(timerInterval);
-    clearInterval(saveInterval);
-    timerInterval = null;
-    saveInterval  = null;
-
-    localStartedAt = null; // AVANT le remove pour éviter faux-positif
-    db.ref(`jeudesjeux/${currentUser}/startedAt`).remove()
-      .catch(err => console.error('Firebase error:', err));
-
-    saveCurrentTimer();
-    updateFooter();
-    renderJeux();
 }
 
 // ============================================================
