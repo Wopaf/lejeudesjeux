@@ -30,13 +30,14 @@ const JEUX = [
 // ============================================================
 //  ÉTAT
 // ============================================================
-let currentUser   = null;   // 'matthias' | 'valentin'
-let selectedJeu   = null;   // index 0-7
-let timers        = new Array(8).fill(0); // secondes par jeu
-let timerRunning  = false;
-let timerInterval = null;
-let saveInterval  = null;
-let fbListener    = null;
+let currentUser    = null;   // 'matthias' | 'valentin'
+let selectedJeu    = null;   // index 0-7
+let timers         = new Array(8).fill(0); // secondes par jeu
+let timerRunning   = false;
+let timerInterval  = null;
+let saveInterval   = null;
+let fbListener     = null;
+let localStartedAt = null;   // timestamp écrit par CET appareil, pour détecter conflits
 
 // ============================================================
 //  INIT
@@ -80,12 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sauvegarder si la page se ferme pendant que le timer tourne
     window.addEventListener('beforeunload', () => {
-        if (timerRunning) {
-            saveCurrentTimer();
-            // Mettre à jour startedAt à maintenant : le timer est déjà sauvegardé,
-            // donc au rechargement l'elapsed calculé sera ~0 et non doublé
-            db.ref(`jeudesjeux/${currentUser}/startedAt`).set(Date.now());
-        }
+        if (timerRunning) saveCurrentTimer();
     });
 
     // Utilisateur déjà choisi ?
@@ -136,20 +132,26 @@ function handleResetSaves() {
         clearTimeout(resetConfirmTimeout);
         btn.classList.remove('confirm');
         btn.textContent = 'Réinitialiser les sauvegardes';
+        if (timerRunning) stopTimer();
+        timers = new Array(8).fill(0);
+        selectedJeu = null;
+        localStorage.removeItem('jdj_selected');
+        renderJeux();
+        updateFooter();
         db.ref('jeudesjeux').remove()
           .catch(err => console.error('Firebase reset error:', err));
     }
 }
 
 function resetApp() {
-    // Détacher le listener AVANT de nullifier currentUser
     if (fbListener && currentUser) {
         db.ref(`jeudesjeux/${currentUser}`).off('value', fbListener);
         fbListener = null;
     }
-    currentUser = null;
-    timers = new Array(8).fill(0);
-    selectedJeu = null;
+    currentUser    = null;
+    timers         = new Array(8).fill(0);
+    selectedJeu    = null;
+    localStartedAt = null;
 }
 
 // ============================================================
@@ -162,6 +164,16 @@ function loadTimers() {
 
     fbListener = db.ref(`jeudesjeux/${currentUser}`).on('value', snap => {
         const data = snap.val() || {};
+
+        // Un autre appareil a pris le contrôle du timer → on arrête le nôtre
+        if (timerRunning && data.startedAt !== localStartedAt) {
+            timerRunning   = false;
+            localStartedAt = null;
+            clearInterval(timerInterval);
+            clearInterval(saveInterval);
+            timerInterval = null;
+            saveInterval  = null;
+        }
 
         // Timers des jeux (ne pas écraser le jeu en cours de timer)
         for (let i = 0; i < 8; i++) {
@@ -180,11 +192,10 @@ function loadTimers() {
         if (!timerRunning && data.startedAt) {
             const elapsed = Math.floor((Date.now() - data.startedAt) / 1000);
             timers[selectedJeu] = (data[selectedJeu] || 0) + elapsed;
-            // Sauvegarder le temps récupéré et réinitialiser startedAt
             db.ref(`jeudesjeux/${currentUser}/${selectedJeu}`).set(timers[selectedJeu]);
-            db.ref(`jeudesjeux/${currentUser}/startedAt`).set(Date.now());
-            // Démarrer l'intervalle sans ré-écrire startedAt
-            timerRunning = true;
+            localStartedAt = Date.now(); // AVANT le set pour éviter faux-positif
+            db.ref(`jeudesjeux/${currentUser}/startedAt`).set(localStartedAt);
+            timerRunning  = true;
             timerInterval = setInterval(() => {
                 timers[selectedJeu]++;
                 const footerEl = document.getElementById('footer-timer-val');
@@ -202,9 +213,19 @@ function loadTimers() {
 
 function saveCurrentTimer() {
     if (selectedJeu === null || !currentUser) return;
-    db.ref(`jeudesjeux/${currentUser}/${selectedJeu}`)
-      .set(timers[selectedJeu])
-      .catch(err => console.error('Firebase save error:', err));
+    if (timerRunning) {
+        // Sauvegarde atomique timer + startedAt pour éviter le double-comptage au rechargement
+        const now = Date.now();
+        localStartedAt = now;
+        db.ref(`jeudesjeux/${currentUser}`).update({
+            [selectedJeu]: timers[selectedJeu],
+            startedAt: now,
+        }).catch(err => console.error('Firebase save error:', err));
+    } else {
+        db.ref(`jeudesjeux/${currentUser}/${selectedJeu}`)
+          .set(timers[selectedJeu])
+          .catch(err => console.error('Firebase save error:', err));
+    }
 }
 
 // ============================================================
@@ -350,7 +371,8 @@ function startTimer() {
     // Sauvegarde automatique toutes les 30 secondes
     saveInterval = setInterval(saveCurrentTimer, 30_000);
 
-    db.ref(`jeudesjeux/${currentUser}/startedAt`).set(Date.now())
+    localStartedAt = Date.now(); // AVANT le set pour éviter faux-positif
+    db.ref(`jeudesjeux/${currentUser}/startedAt`).set(localStartedAt)
       .catch(err => console.error('Firebase error:', err));
 }
 
@@ -383,6 +405,7 @@ function stopTimer() {
     timerInterval = null;
     saveInterval  = null;
 
+    localStartedAt = null; // AVANT le remove pour éviter faux-positif
     db.ref(`jeudesjeux/${currentUser}/startedAt`).remove()
       .catch(err => console.error('Firebase error:', err));
 
