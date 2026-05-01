@@ -1,4 +1,19 @@
 // ============================================================
+//  FIREBASE
+// ============================================================
+const FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyBsjr0peOj1jFPhAA080MWuUGlyYapjxn0",
+    authDomain:        "moviegame-1b838.firebaseapp.com",
+    databaseURL:       "https://moviegame-1b838-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:         "moviegame-1b838",
+    storageBucket:     "moviegame-1b838.firebasestorage.app",
+    messagingSenderId: "448540908211",
+    appId:             "1:448540908211:web:894cb1e8c38d59c4a9eec6",
+};
+const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+const db  = firebase.database(app);
+
+// ============================================================
 //  CONFIGURATION — Modifie ce tableau pour personnaliser les jeux
 // ============================================================
 const JEUX = [

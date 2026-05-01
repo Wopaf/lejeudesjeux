@@ -215,26 +215,22 @@ button {
     font-weight: 700;
 }
 
-/* ── Wrapper de contrainte (flex-child) ── */
+/* ── Wrapper scrollable ── */
 .jeux-scroll-wrap {
     flex: 1;
     min-height: 0;
-    position: relative;
-    overflow: hidden;
-}
-
-/* ── Liste des jeux (scroll absolu) ── */
-.jeux-grid {
-    position: absolute;
-    inset: 0;
     overflow-y: auto;
+    scrollbar-width: none;
+}
+.jeux-scroll-wrap::-webkit-scrollbar { display: none; }
+
+/* ── Liste des jeux ── */
+.jeux-grid {
     padding: 12px 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    scrollbar-width: none;
 }
-.jeux-grid::-webkit-scrollbar { display: none; }
 
 /* ── Cards ── */
 .game-card {
@@ -244,7 +240,6 @@ button {
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.2s;
     overflow: hidden;
-    min-height: fit-content;
     position: relative;
 }
 
