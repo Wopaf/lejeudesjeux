@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Jeu des Jeux</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&family=Nunito:wght@700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="lejeudesjeux.css">
+</head>
+<body>
+
+<div class="page-fade"></div>
+
+<!-- ══ MODAL UTILISATEUR ══ -->
+<div id="user-modal" class="user-modal">
+    <div class="user-modal-panel">
+        <div class="user-modal-icon">🎮</div>
+        <h1 class="user-modal-title">Qui es-tu ?</h1>
+        <p class="user-modal-sub">Choisis ton profil pour commencer</p>
+        <div class="user-choices">
+            <button class="user-choice-btn" data-user="matthias">
+                <span class="user-choice-avatar">M</span>
+                <span class="user-choice-name">Matthias</span>
+            </button>
+            <button class="user-choice-btn" data-user="valentin">
+                <span class="user-choice-avatar">V</span>
+                <span class="user-choice-name">Valentin</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MODAL CONFIRMATION TIMER ══ -->
+<div id="confirm-modal" class="confirm-modal hidden">
+    <div class="confirm-overlay"></div>
+    <div class="confirm-panel">
+        <div class="confirm-thumb" id="confirm-thumb"></div>
+        <div class="confirm-text">
+            <p class="confirm-label">Lancer le timer pour</p>
+            <h2 class="confirm-title" id="confirm-game-name"></h2>
+            <p class="confirm-hint">Tu ne pourras pas changer de jeu tant qu'il tourne.</p>
+        </div>
+        <div class="confirm-btns">
+            <button class="confirm-btn confirm-btn--cancel" id="confirm-cancel">Annuler</button>
+            <button class="confirm-btn confirm-btn--ok" id="confirm-ok">▶ &nbsp;Lancer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ APPLICATION ══ -->
+<div id="app" class="app hidden">
+
+    <header class="app-header">
+        <h1 class="app-title">Le Jeu des Jeux</h1>
+        <button class="user-badge" id="user-badge" title="Changer d'utilisateur">
+            <span class="user-badge-avatar" id="user-badge-avatar">M</span>
+            <span class="user-badge-name" id="user-badge-name">Matthias</span>
+        </button>
+    </header>
+
+    <div class="jeux-scroll-wrap">
+        <main class="jeux-grid" id="jeux-grid"></main>
+    </div>
+
+    <div class="footer-bar">
+        <div class="time-dist" id="time-dist">
+            <div class="time-dist-bar" id="time-dist-bar"></div>
+        </div>
+        <div class="footer-info">
+            <div class="footer-selected-wrap">
+                <span class="footer-label">Sélectionné</span>
+                <span class="footer-selected-name" id="footer-selected-name">—</span>
+            </div>
+            <div class="footer-timer-wrap">
+                <span class="footer-label">Temps total</span>
+                <span class="footer-timer-val" id="footer-timer-val">00:00:00</span>
+            </div>
+        </div>
+        <button class="launch-btn" id="launch-btn" disabled>
+            <span id="launch-btn-icon">▶</span>
+            <span id="launch-btn-label">Lancer le timer</span>
+        </button>
+    </div>
+
+</div>
+
+<!-- Infobulle progressbar -->
+<div id="dist-tooltip" class="dist-tooltip hidden">
+    <span class="dist-tooltip-name" id="dist-tooltip-name"></span>
+    <span class="dist-tooltip-timer" id="dist-tooltip-timer"></span>
+    <div class="dist-tooltip-arrow"></div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+    const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyBsjr0peOj1jFPhAA080MWuUGlyYapjxn0",
+        authDomain: "moviegame-1b838.firebaseapp.com",
+        databaseURL: "https://moviegame-1b838-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "moviegame-1b838",
+        storageBucket: "moviegame-1b838.firebasestorage.app",
+        messagingSenderId: "448540908211",
+        appId: "1:448540908211:web:894cb1e8c38d59c4a9eec6"
+    };
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const db = firebase.database();
+</script>
+<script src="lejeudesjeux.js"></script>
+
+</body>
+</html>
