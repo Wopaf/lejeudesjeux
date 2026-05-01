@@ -14,6 +14,11 @@ const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREB
 const db  = firebase.database(app);
 
 // ============================================================
+//  VERSION — Modifie cette valeur pour changer le numéro de version
+// ============================================================
+const VERSION = '0.1.1';
+
+// ============================================================
 //  CONFIGURATION — Modifie ce tableau pour personnaliser les jeux
 // ============================================================
 const JEUX = [
@@ -24,7 +29,6 @@ const JEUX = [
     { nom: "Have a Nice Death", img: "medias-lejeudesjeux/have.png", couleur: "#eab308" },
     { nom: "Dead Island 2", img: "medias-lejeudesjeux/dead.png", couleur: "#22c55e" },
     { nom: "Gorogoa", img: "medias-lejeudesjeux/gorogoa.png", couleur: "#06b6d4" },
-    { nom: "Jeu 8", img: "medias-lejeudesjeux/kingdown.png", couleur: "#3b82f6" },
 ];
 
 // ============================================================
@@ -49,6 +53,8 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('app-version').textContent = `v${VERSION}`;
+
     // Sélection dans la modal
     document.querySelectorAll('.user-choice-btn').forEach(btn => {
         btn.addEventListener('click', () => setUser(btn.dataset.user));

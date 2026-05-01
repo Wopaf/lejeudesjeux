@@ -164,6 +164,13 @@ button {
     color: #ef4444;
 }
 
+.app-version {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    margin-top: 8px;
+}
+
 /* ============================================================
    APP LAYOUT
    ============================================================ */
