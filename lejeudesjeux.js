@@ -16,19 +16,28 @@ const db  = firebase.database(app);
 // ============================================================
 //  VERSION — Modifie cette valeur pour changer le numéro de version
 // ============================================================
-const VERSION = '0.1.3';
+const VERSION = '1.0.0';
 
 // ============================================================
 //  CONFIGURATION — Modifie ce tableau pour personnaliser les jeux
 // ============================================================
 const JEUX = [
-    { nom: "Super Meat Boy",           img: "medias-lejeudesjeux/meatboy.png",      couleur: "#7c5cfc" },
-    { nom: "Dungeon Siège",            img: "medias-lejeudesjeux/dungeonsiege.png", couleur: "#a855f7" },
-    { nom: "Castlevania: Aria of Sorrow", img: "medias-lejeudesjeux/castelvania.png", couleur: "#ec4899" },
-    { nom: "Kingdom Hearts III",       img: "medias-lejeudesjeux/kingdown.png",     couleur: "#f97316" },
-    { nom: "Have a Nice Death",        img: "medias-lejeudesjeux/have.png",         couleur: "#eab308" },
-    { nom: "Dead Island 2",            img: "medias-lejeudesjeux/dead.png",         couleur: "#22c55e" },
-    { nom: "Gorogoa",                  img: "medias-lejeudesjeux/gorogoa.png",      couleur: "#06b6d4" },
+    { nom: "Super Meat Boy",           img: "medias-lejeudesjeux/meatboy.png",      couleur: "#db2727" },
+    { nom: "Dungeon Siège",            img: "medias-lejeudesjeux/dungeonsiege.png", couleur: "#ecc349" },
+    { nom: "Castlevania: Aria of Sorrow", img: "medias-lejeudesjeux/castelvania.png", couleur: "#4d67ff" },
+    { nom: "Kingdom Hearts III",       img: "medias-lejeudesjeux/kingdown.png",     couleur: "#a748ef" },
+    { nom: "Have a Nice Death",        img: "medias-lejeudesjeux/have.png",         couleur: "#454545" },
+    { nom: "Dead Island 2",            img: "medias-lejeudesjeux/dead.png",         couleur: "#33c0ad" },
+    { nom: "Gorogoa",                  img: "medias-lejeudesjeux/gorogoa.png",      couleur: "#4bc561" },
+];
+
+// ============================================================
+//  UTILISATEURS — couleurs et identifiants
+// ============================================================
+const USERS = [
+    { id: 'matthias', name: 'Matthias', initial: 'M',  couleur: '#4ade80' },
+    { id: 'valentin', name: 'Valentin', initial: 'V',  couleur: '#fb923c' },
+    { id: 'morgane',  name: 'Morgane',  initial: 'Mo', couleur: '#d946ef' },
 ];
 
 // ============================================================
@@ -40,14 +49,17 @@ let timers       = new Array(JEUX.length).fill(0); // valeurs accumulées Fireba
 let timerRunning = false;
 let startedAt    = null;   // timestamp (ms) du démarrage de la session en cours
 let liveInterval = null;   // mise à jour du compteur live dans le footer
-let fbListener   = null;
+let fbListener    = null;
+let visitData     = {};  // données lues à l'ouverture de la modal Visiter
+let tooltipTimeout     = null;
+let tooltipHideTimeout = null;
 
 // ============================================================
 //  INIT
 // ============================================================
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.time-dist-segment')) {
-        document.getElementById('dist-tooltip').classList.add('hidden');
+        hideTooltip();
     }
 });
 
@@ -58,12 +70,9 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => setUser(btn.dataset.user));
     });
 
-    document.getElementById('user-badge').addEventListener('click', () => {
-        if (timerRunning) stopTimer();
-        resetApp();
-        document.getElementById('app').classList.add('hidden');
-        document.getElementById('user-modal').classList.remove('hidden');
-    });
+    document.getElementById('visit-btn').addEventListener('click', openVisitModal);
+    document.getElementById('visit-close').addEventListener('click', closeVisitModal);
+    document.getElementById('visit-overlay').addEventListener('click', closeVisitModal);
 
     document.getElementById('launch-btn').addEventListener('click', () => {
         if (timerRunning) stopTimer();
@@ -88,9 +97,13 @@ function setUser(user) {
     currentUser = user;
     localStorage.setItem('jdj_user', user);
 
-    const initial = user.charAt(0).toUpperCase();
+    const userConfig = USERS.find(u => u.id === user);
+    const color      = userConfig ? userConfig.couleur : '#7c5cfc';
+    const initial    = userConfig ? userConfig.initial : user.charAt(0).toUpperCase();
+    const badge      = document.getElementById('user-badge');
     document.getElementById('user-badge-avatar').textContent = initial;
-    document.getElementById('user-badge-name').textContent   = initial + user.slice(1);
+    document.getElementById('user-badge-name').textContent   = userConfig ? userConfig.name : user;
+    badge.style.setProperty('--user-color', color);
 
     document.getElementById('user-modal').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -270,13 +283,10 @@ function updateDistribution() {
 
         seg.addEventListener('click', (e) => {
             e.stopPropagation();
-            const tooltip = document.getElementById('dist-tooltip');
-            document.getElementById('dist-tooltip-name').textContent  = jeu.nom;
-            document.getElementById('dist-tooltip-timer').textContent = formatTime(timers[i]);
-            tooltip.style.left = e.clientX + 'px';
-            tooltip.style.top  = (e.clientY - 10) + 'px';
-            tooltip.classList.add('hidden');
-            requestAnimationFrame(() => tooltip.classList.remove('hidden'));
+            bar.querySelectorAll('.time-dist-segment').forEach(s => s.classList.remove('focused'));
+            bar.classList.add('has-focus');
+            seg.classList.add('focused');
+            showTooltip(e.clientX, e.clientY - 10, jeu.nom, formatTime(timers[i]));
         });
 
         bar.appendChild(seg);
@@ -301,14 +311,12 @@ function updateFooter() {
             btnIcon.textContent  = '⏹';
             btnLabel.textContent = 'Arrêter le timer';
             btn.classList.add('running');
-            document.getElementById('user-badge').classList.add('timer-active');
         } else {
             timerEl.textContent  = formatTime(timers[selectedJeu]);
             timerEl.classList.remove('running');
             btnIcon.textContent  = '▶';
             btnLabel.textContent = 'Lancer le timer';
             btn.classList.remove('running');
-            document.getElementById('user-badge').classList.remove('timer-active');
         }
     } else {
         nameEl.textContent  = '—';
@@ -395,8 +403,131 @@ function hideConfirm() {
 }
 
 // ============================================================
+//  MODAL VISITER
+// ============================================================
+function openVisitModal() {
+    const modal = document.getElementById('visit-modal');
+    modal.classList.remove('hidden', 'closing');
+    visitData = {};
+
+    USERS.forEach(user => {
+        db.ref(`jeudesjeux/${user.id}`).once('value', snap => {
+            visitData[user.id] = snap.val() || {};
+            renderVisitModal();
+        });
+    });
+}
+
+function closeVisitModal() {
+    const modal = document.getElementById('visit-modal');
+    if (modal.classList.contains('hidden')) return;
+    modal.classList.add('closing');
+    setTimeout(() => {
+        modal.classList.remove('closing');
+        modal.classList.add('hidden');
+        visitData = {};
+    }, 200);
+}
+
+function renderVisitModal() {
+    const container = document.getElementById('visit-users');
+    container.innerHTML = '';
+
+    USERS.forEach(user => {
+        const data        = visitData[user.id] || {};
+        const userTimers  = JEUX.map((_, i) => data[i] || 0);
+        const total       = userTimers.reduce((sum, t) => sum + t, 0);
+        const isPlaying   = !!data.timerActive;
+        const selIdx      = (data.selectedJeu != null && data.selectedJeu < JEUX.length)
+                            ? data.selectedJeu : null;
+        const selJeu      = selIdx !== null ? JEUX[selIdx] : null;
+
+        const statusText  = isPlaying && selJeu ? selJeu.nom : 'Hors ligne';
+        const statusClass = isPlaying ? 'online' : '';
+
+        const card = document.createElement('div');
+        card.className = 'visit-user-card' + (isPlaying ? ' is-playing' : '');
+        card.innerHTML = `
+            <div class="visit-user-header">
+                <div class="visit-user-avatar" style="background:linear-gradient(135deg,${user.couleur},${user.couleur}88)">
+                    ${user.initial}
+                </div>
+                <div class="visit-user-info">
+                    <span class="visit-user-name">${user.name}</span>
+                    <span class="visit-user-status ${statusClass}">
+                        ${isPlaying ? '<span class="visit-status-dot"></span>' : ''}
+                        ${statusText}
+                    </span>
+                </div>
+                <span class="visit-user-total">${formatTime(total)}</span>
+            </div>
+        `;
+
+        if (total > 0) {
+            const bar = document.createElement('div');
+            bar.className = 'visit-dist-bar';
+            JEUX.forEach((jeu, i) => {
+                if (userTimers[i] === 0) return;
+                const pct = (userTimers[i] / total) * 100;
+                const seg = document.createElement('div');
+                seg.className = 'visit-dist-seg';
+                seg.style.width      = pct + '%';
+                seg.style.background = jeu.couleur;
+                seg.style.cursor     = 'pointer';
+                seg.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    bar.querySelectorAll('.visit-dist-seg').forEach(s => s.classList.remove('focused'));
+                    bar.classList.add('has-focus');
+                    seg.classList.add('focused');
+                    showTooltip(e.clientX, e.clientY - 10, jeu.nom, formatTime(userTimers[i]));
+                });
+                bar.appendChild(seg);
+            });
+            card.appendChild(bar);
+        } else {
+            const noData = document.createElement('div');
+            noData.className   = 'visit-no-data';
+            noData.textContent = 'Aucune donnée';
+            card.appendChild(noData);
+        }
+
+        container.appendChild(card);
+    });
+}
+
+// ============================================================
 //  UTILITAIRES
 // ============================================================
+function hideTooltip() {
+    const tooltip = document.getElementById('dist-tooltip');
+    if (tooltip.classList.contains('hidden')) return;
+    clearTimeout(tooltipHideTimeout);
+    tooltip.classList.add('hiding');
+    tooltipHideTimeout = setTimeout(() => {
+        tooltip.classList.remove('hiding');
+        tooltip.classList.add('hidden');
+        document.querySelectorAll('.time-dist-bar, .visit-dist-bar').forEach(b => {
+            b.classList.remove('has-focus');
+            b.querySelectorAll('.focused').forEach(s => s.classList.remove('focused'));
+        });
+    }, 120);
+}
+
+function showTooltip(x, y, name, time) {
+    const tooltip = document.getElementById('dist-tooltip');
+    clearTimeout(tooltipHideTimeout);
+    tooltip.classList.remove('hiding');
+    document.getElementById('dist-tooltip-name').textContent  = name;
+    document.getElementById('dist-tooltip-timer').textContent = time;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+    tooltip.classList.add('hidden');
+    requestAnimationFrame(() => tooltip.classList.remove('hidden'));
+    clearTimeout(tooltipTimeout);
+    tooltipTimeout = setTimeout(() => hideTooltip(), 2000);
+}
+
+
 function formatTime(seconds) {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);

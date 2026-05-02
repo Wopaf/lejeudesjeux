@@ -195,13 +195,15 @@ button {
 
 /* ── Barre cumul total ── */
 .app-total-bar {
+    z-index: 99;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 7px 20px;
-    background: rgba(124, 92, 252, 0.06);
-    border-bottom: 1px solid var(--border);
+    padding: 7px 20px 0px 20px;
+    background: rgba(15, 17, 23, 0.95);
+    border-top: 1px solid var(--border);
+    box-shadow: 0px -5px 15px rgba(0, 0, 0, 0.5);
 }
 
 .app-total-label {
@@ -216,12 +218,13 @@ button {
     font-family: var(--font-mono);
     font-size: 0.82rem;
     font-weight: 700;
-    color: var(--accent);
+    color: white;
     letter-spacing: 1px;
 }
 
 /* ── Header ── */
 .app-header {
+    z-index: 98;
     flex-shrink: 0;
     height: var(--header-h);
     display: flex;
@@ -229,6 +232,7 @@ button {
     justify-content: space-between;
     padding: 0 20px;
     border-bottom: 1px solid var(--border);
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.5);
 }
 
 .app-title {
@@ -238,6 +242,7 @@ button {
     color: var(--text);
 }
 
+/* ── Badge utilisateur connecté ── */
 .user-badge {
     display: flex;
     align-items: center;
@@ -246,36 +251,254 @@ button {
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--border);
     border-radius: 50px;
-    color: var(--text);
-    transition: background 0.15s, border-color 0.15s;
-}
-
-.user-badge:hover {
-    background: rgba(255,255,255,0.09);
-    border-color: var(--border-sel);
-}
-
-.user-badge.timer-active {
-    opacity: 0;
-    pointer-events: none;
 }
 
 .user-badge-avatar {
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    background: var(--user-color, var(--accent));
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.7rem;
     font-weight: 900;
     color: #fff;
+    font-family: var(--font-title);
 }
 
 .user-badge-name {
     font-size: 0.78rem;
     font-weight: 700;
+    color: var(--text);
+}
+
+/* ── Bouton Visiter ── */
+.visit-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.visit-btn:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: var(--border-sel);
+    color: var(--text);
+}
+
+/* ── Modal Visiter ── */
+.visit-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.visit-modal.hidden { display: none !important; }
+
+.visit-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    animation: fadeIn 0.2s ease;
+}
+
+.visit-modal.closing .visit-overlay {
+    animation: fadeOut 0.2s ease forwards;
+}
+
+.visit-panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 400px;
+    background: #1a1d27;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 24px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: confirmPop 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.visit-modal.closing .visit-panel {
+    animation: confirmPopOut 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+@keyframes confirmPopOut {
+    from { opacity: 1; transform: scale(1); }
+    to   { opacity: 0; transform: scale(0.88); }
+}
+
+.visit-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.visit-title {
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--text);
+}
+
+.visit-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.visit-close:hover { background: rgba(255,255,255,0.12); }
+
+.visit-users {
+    overflow-y: auto;
+    padding: 16px 20px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scrollbar-width: none;
+}
+
+.visit-users::-webkit-scrollbar { display: none; }
+
+.visit-user-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.visit-user-card.is-playing {
+    border-color: rgba(34,197,94,0.35);
+    box-shadow: 0 0 0 1px rgba(34,197,94,0.15);
+}
+
+.visit-user-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.visit-user-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-title);
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: #fff;
+}
+
+.visit-user-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.visit-user-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.visit-user-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.visit-user-status.online { color: var(--green); }
+
+.visit-status-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.visit-user-total {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.visit-dist-bar {
+    display: flex;
+    height: 14px;
+    border-radius: 99px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.06);
+}
+
+.visit-dist-seg + .visit-dist-seg {
+    border-left: 2px solid rgba(0,0,0,0.35);
+}
+
+.visit-dist-seg {
+    transition: opacity 0.2s;
+}
+
+.visit-dist-bar.has-focus .visit-dist-seg {
+    opacity: 0.2;
+}
+
+.visit-dist-bar.has-focus .visit-dist-seg.focused {
+    opacity: 1;
+}
+
+.visit-no-data {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 2px 0;
 }
 
 /* ── Wrapper scrollable ── */
@@ -404,11 +627,13 @@ button {
 /* ── Distribution du temps ── */
 .time-dist {
     width: 100%;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
 }
 
 .time-dist-bar {
     display: flex;
-    height: 10px;
+    height: 14px;
     border-radius: 99px;
     overflow: hidden;
     background: rgba(255,255,255,0.06);
@@ -416,7 +641,7 @@ button {
 
 .time-dist-segment {
     height: 100%;
-    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s;
     position: relative;
 }
 
@@ -441,6 +666,14 @@ button {
     cursor: pointer;
 }
 
+.time-dist-bar.has-focus .time-dist-segment {
+    opacity: 0.2;
+}
+
+.time-dist-bar.has-focus .time-dist-segment.focused {
+    opacity: 1;
+}
+
 /* ── Infobulle progressbar ── */
 .dist-tooltip {
     position: fixed;
@@ -462,9 +695,18 @@ button {
 
 .dist-tooltip.hidden { display: none !important; }
 
+.dist-tooltip.hiding {
+    animation: tooltipOut 0.12s ease forwards;
+}
+
 @keyframes tooltipIn {
     from { opacity: 0; transform: translateX(-50%) translateY(calc(-100% + 6px)); }
     to   { opacity: 1; transform: translateX(-50%) translateY(-100%); }
+}
+
+@keyframes tooltipOut {
+    from { opacity: 1; transform: translateX(-50%) translateY(-100%); }
+    to   { opacity: 0; transform: translateX(-50%) translateY(calc(-100% + 4px)); }
 }
 
 .dist-tooltip-name {
@@ -497,7 +739,6 @@ button {
 .footer-bar {
     flex-shrink: 0;
     padding: 14px 20px 24px;
-    border-top: 1px solid var(--border);
     background: rgba(15, 17, 23, 0.95);
     backdrop-filter: blur(20px);
     display: flex;
