@@ -101,13 +101,15 @@ button {
 
 .user-choices {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 16px;
-    width: 100%;
     margin-top: 8px;
 }
 
 .user-choice-btn {
-    flex: 1;
+    --btn-color: var(--accent);
+    width: 100px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -120,9 +122,13 @@ button {
     transition: background 0.15s, border-color 0.15s, transform 0.15s;
 }
 
+.user-choice-btn[data-user="matthias"] { --btn-color: #4ade80; }
+.user-choice-btn[data-user="valentin"] { --btn-color: #fb923c; }
+.user-choice-btn[data-user="morgane"]  { --btn-color: #d946ef; }
+
 .user-choice-btn:hover {
     background: var(--bg-card-h);
-    border-color: var(--accent);
+    border-color: var(--btn-color);
     transform: translateY(-2px);
 }
 
@@ -130,7 +136,7 @@ button {
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    background: linear-gradient(135deg, var(--btn-color), color-mix(in srgb, var(--btn-color) 70%, #000));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -187,6 +193,33 @@ button {
     overflow: hidden;
 }
 
+/* ── Barre cumul total ── */
+.app-total-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 20px;
+    background: rgba(124, 92, 252, 0.06);
+    border-bottom: 1px solid var(--border);
+}
+
+.app-total-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+}
+
+.app-total-val {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 1px;
+}
+
 /* ── Header ── */
 .app-header {
     flex-shrink: 0;
@@ -220,6 +253,11 @@ button {
 .user-badge:hover {
     background: rgba(255,255,255,0.09);
     border-color: var(--border-sel);
+}
+
+.user-badge.timer-active {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .user-badge-avatar {

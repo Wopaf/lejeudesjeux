@@ -16,7 +16,7 @@ const db  = firebase.database(app);
 // ============================================================
 //  VERSION — Modifie cette valeur pour changer le numéro de version
 // ============================================================
-const VERSION = '0.1.2';
+const VERSION = '0.1.3';
 
 // ============================================================
 //  CONFIGURATION — Modifie ce tableau pour personnaliser les jeux
@@ -194,9 +194,17 @@ function _startLiveInterval() {
     liveInterval = setInterval(() => {
         if (!timerRunning || startedAt === null) return;
         const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-        const el = document.getElementById('footer-timer-val');
-        if (el) el.textContent = formatTime(elapsed);
+        const footerEl = document.getElementById('footer-timer-val');
+        if (footerEl) footerEl.textContent = formatTime(elapsed);
+        updateTotalTime();
     }, 1000);
+}
+
+function updateTotalTime() {
+    const accumulated = timers.reduce((sum, t) => sum + t, 0);
+    const live = (timerRunning && startedAt) ? Math.floor((Date.now() - startedAt) / 1000) : 0;
+    const el = document.getElementById('app-total-val');
+    if (el) el.textContent = formatTime(accumulated + live);
 }
 
 function _stopLiveInterval() {
@@ -241,6 +249,7 @@ function renderJeux() {
     });
 
     updateDistribution();
+    updateTotalTime();
 }
 
 function updateDistribution() {
@@ -292,12 +301,14 @@ function updateFooter() {
             btnIcon.textContent  = '⏹';
             btnLabel.textContent = 'Arrêter le timer';
             btn.classList.add('running');
+            document.getElementById('user-badge').classList.add('timer-active');
         } else {
             timerEl.textContent  = formatTime(timers[selectedJeu]);
             timerEl.classList.remove('running');
             btnIcon.textContent  = '▶';
             btnLabel.textContent = 'Lancer le timer';
             btn.classList.remove('running');
+            document.getElementById('user-badge').classList.remove('timer-active');
         }
     } else {
         nameEl.textContent  = '—';
