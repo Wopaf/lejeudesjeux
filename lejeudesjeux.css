@@ -214,6 +214,32 @@ button {
     color: var(--text);
 }
 
+/* ── Groupe gauche header ── */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+/* ── Badge note perso ── */
+.user-note-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 0 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+}
+
 /* ── Badge utilisateur connecté ── */
 .user-badge {
     display: flex;
@@ -223,6 +249,13 @@ button {
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--border);
     border-radius: 50px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.user-badge:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: var(--border-sel);
 }
 
 .user-badge-avatar {
@@ -266,6 +299,161 @@ button {
     border-color: var(--border-sel);
     color: var(--text);
 }
+
+/* ── Modal Profil ── */
+.profile-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.profile-modal.hidden { display: none !important; }
+
+.profile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    animation: fadeIn 0.2s ease;
+}
+
+.profile-modal.closing .profile-overlay { animation: fadeOut 0.2s ease forwards; }
+.profile-modal.closing .profile-panel   { animation: confirmPopOut 0.2s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+.profile-panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 340px;
+    background: #1a1d27;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 24px;
+    animation: confirmPop 0.28s cubic-bezier(0.22,1,0.36,1);
+    overflow: hidden;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.profile-title {
+    font-family: var(--font-title);
+    font-size: 1rem;
+    font-weight: 900;
+    color: var(--text);
+}
+
+.profile-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.profile-close:hover { background: rgba(255,255,255,0.13); color: var(--text); }
+
+.profile-body {
+    padding: 18px 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.profile-user-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.profile-name {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+}
+
+.profile-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.profile-color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2.5px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.profile-color-swatch:hover { transform: scale(1.15); }
+
+.profile-color-swatch.active {
+    border-color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.25);
+}
+
+.profile-note {
+    width: 100%;
+    height: 80px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 10px 12px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.profile-note:focus { border-color: var(--accent); }
+.profile-note::placeholder { color: var(--text-dim); }
 
 /* ── Modal Visiter ── */
 .visit-modal {
@@ -366,6 +554,7 @@ button {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+    width: 100%;
     padding: 14px 16px;
     display: flex;
     flex-direction: column;
@@ -444,18 +633,40 @@ button {
 
 .visit-dist-bar {
     display: flex;
-    height: 14px;
-    border-radius: 99px;
+    height: 20px;
+    border-radius: 6px;
     overflow: hidden;
     background: rgba(255,255,255,0.06);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04);
+    position: relative;
+    gap: 2px;
 }
 
-.visit-dist-seg + .visit-dist-seg {
-    border-left: 2px solid rgba(0,0,0,0.35);
+.visit-dist-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 99px;
+    background:
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 4px,
+            rgba(0,0,0,0.05) 4px,
+            rgba(0,0,0,0.05) 6px
+        ),
+        linear-gradient(to bottom, rgba(255,255,255,0.10) 0%, transparent 55%);
+    pointer-events: none;
+    z-index: 1;
 }
 
 .visit-dist-seg {
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, filter 0.15s;
+    cursor: pointer;
+}
+
+.visit-dist-seg:hover {
+    filter: brightness(1.2);
 }
 
 .visit-dist-bar.has-focus .visit-dist-seg {
@@ -464,6 +675,7 @@ button {
 
 .visit-dist-bar.has-focus .visit-dist-seg.focused {
     opacity: 1;
+    filter: brightness(1.15);
 }
 
 .visit-slots {
@@ -484,6 +696,29 @@ button {
 .visit-slot.done {
     background-size: cover;
     background-position: center;
+}
+
+/* ── Speech bubble ── */
+.visit-user-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+}
+
+.visit-bubble {
+    position: relative;
+    background: #252840;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px 12px 12px 2px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.4;
+    max-width: 90%;
+    margin-left: 8px;
+    margin-bottom: 8px;
+    word-break: break-word;
 }
 
 
@@ -538,6 +773,23 @@ button {
     box-shadow: 0 0 0 1px var(--accent),
                 0 4px 24px color-mix(in srgb, var(--accent) 20%, transparent);
     background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
+}
+
+.game-card.selected::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent);
+    pointer-events: none;
+    animation: cardShine 0.55s ease forwards;
+}
+
+@keyframes cardShine {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(300%); }
 }
 
 .game-card.running {
@@ -720,27 +972,49 @@ button {
 
 .time-dist-bar {
     display: flex;
-    height: 14px;
-    border-radius: 99px;
+    height: 20px;
+    border-radius: 6px;
     overflow: hidden;
     background: rgba(255,255,255,0.06);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04);
+    position: relative;
+    gap: 2px;
+}
+
+.time-dist-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 99px;
+    background:
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 4px,
+            rgba(0,0,0,0.05) 4px,
+            rgba(0,0,0,0.05) 6px
+        ),
+        linear-gradient(to bottom, rgba(255,255,255,0.10) 0%, transparent 55%);
+    pointer-events: none;
+    z-index: 1;
 }
 
 .time-dist-segment {
     height: 100%;
-    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s;
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s, filter 0.15s;
     position: relative;
+    cursor: pointer;
 }
 
-.time-dist-segment + .time-dist-segment {
-    border-left: 2px solid rgba(0,0,0,0.35);
+.time-dist-segment:hover {
+    filter: brightness(1.2);
 }
 
-.time-dist-segment.active::after {
+.time-dist-segment.active::before {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent 40%, rgba(255,255,255,0.2) 100%);
+    background: linear-gradient(90deg, transparent 40%, rgba(255,255,255,0.18) 100%);
     animation: dist-shimmer 1.5s ease-in-out infinite;
 }
 
@@ -749,16 +1023,13 @@ button {
     50%       { opacity: 1; }
 }
 
-.time-dist-segment {
-    cursor: pointer;
-}
-
 .time-dist-bar.has-focus .time-dist-segment {
     opacity: 0.2;
 }
 
 .time-dist-bar.has-focus .time-dist-segment.focused {
     opacity: 1;
+    filter: brightness(1.15);
 }
 
 /* ── Infobulle progressbar ── */
@@ -896,14 +1167,14 @@ button {
     font-size: 0.95rem;
     font-weight: 800;
     letter-spacing: 0.3px;
-    box-shadow: 0 4px 20px rgba(124, 92, 252, 0.35);
+    box-shadow: 0 4px 24px color-mix(in srgb, var(--accent) 55%, transparent);
     transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
 .launch-btn:hover:not(:disabled) {
     opacity: 0.92;
     transform: translateY(-1px);
-    box-shadow: 0 6px 28px rgba(124, 92, 252, 0.5);
+    box-shadow: 0 6px 32px color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
 .launch-btn:disabled {
@@ -914,11 +1185,11 @@ button {
 
 .launch-btn.running {
     background: linear-gradient(135deg, #ef4444, #f97316);
-    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35);
+    box-shadow: 0 4px 24px rgba(239, 68, 68, 0.45);
 }
 
 .launch-btn.running:hover:not(:disabled) {
-    box-shadow: 0 6px 28px rgba(239, 68, 68, 0.5);
+    box-shadow: 0 6px 32px rgba(239, 68, 68, 0.6);
 }
 
 /* ── Modal confirmation ── */

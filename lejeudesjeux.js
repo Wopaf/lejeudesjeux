@@ -16,7 +16,7 @@ const db  = firebase.database(app);
 // ============================================================
 //  VERSION — Modifie cette valeur pour changer le numéro de version
 // ============================================================
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 // ============================================================
 //  CONFIGURATION — Modifie ce tableau pour personnaliser les jeux
@@ -34,6 +34,19 @@ const JEUX = [
 // ============================================================
 //  UTILISATEURS — couleurs et identifiants
 // ============================================================
+const ACCENT_COLORS = [
+    ['#7c5cfc', '#a855f7'],
+    ['#3b82f6', '#06b6d4'],
+    ['#06b6d4', '#22c55e'],
+    ['#22c55e', '#84cc16'],
+    ['#eab308', '#f97316'],
+    ['#f97316', '#ef4444'],
+    ['#ef4444', '#ec4899'],
+    ['#ec4899', '#d946ef'],
+];
+
+const ACCENT_DEFAULT = ['#7c5cfc', '#a855f7'];
+
 const USERS = [
     { id: 'matthias', name: 'Matthias', initial: 'M',  couleur: '#4ade80' },
     { id: 'valentin', name: 'Valentin', initial: 'V',  couleur: '#fb923c' },
@@ -55,6 +68,7 @@ let fbListener    = null;
 let visitData     = {};  // données lues à l'ouverture de la modal Visiter
 let tooltipTimeout     = null;
 let tooltipHideTimeout = null;
+let noteTimeout        = null;
 
 // ============================================================
 //  INIT
@@ -70,6 +84,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.user-choice-btn').forEach(btn => {
         btn.addEventListener('click', () => setUser(btn.dataset.user));
+    });
+
+    document.getElementById('user-badge').addEventListener('click', openProfileModal);
+    document.getElementById('profile-close').addEventListener('click', closeProfileModal);
+    document.getElementById('profile-overlay').addEventListener('click', closeProfileModal);
+    document.getElementById('profile-note').addEventListener('input', (e) => {
+        const val   = e.target.value;
+        const noteEl = document.getElementById('user-note-badge');
+        if (noteEl) { noteEl.textContent = val; noteEl.classList.toggle('hidden', !val); }
+        clearTimeout(noteTimeout);
+        noteTimeout = setTimeout(() => {
+            db.ref(`jeudesjeux/${currentUser}/note`).set(val || null).catch(console.error);
+        }, 600);
     });
 
     document.getElementById('visit-btn').addEventListener('click', openVisitModal);
@@ -106,6 +133,12 @@ function setUser(user) {
     document.getElementById('user-badge-avatar').textContent = initial;
     document.getElementById('user-badge-name').textContent   = userConfig ? userConfig.name : user;
     badge.style.setProperty('--user-color', color);
+
+    let savedAccent = ACCENT_DEFAULT;
+    try { savedAccent = JSON.parse(localStorage.getItem(`jdj_accent_${user}`)) || ACCENT_DEFAULT; } catch(e) {}
+    if (!Array.isArray(savedAccent)) savedAccent = ACCENT_DEFAULT;
+    document.documentElement.style.setProperty('--accent',   savedAccent[0]);
+    document.documentElement.style.setProperty('--accent-2', savedAccent[1]);
 
     document.getElementById('user-modal').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -154,6 +187,8 @@ function resetApp() {
         fbListener = null;
     }
     _stopLiveInterval();
+    document.documentElement.style.setProperty('--accent',   ACCENT_DEFAULT[0]);
+    document.documentElement.style.setProperty('--accent-2', ACCENT_DEFAULT[1]);
     currentUser  = null;
     timers       = new Array(JEUX.length).fill(0);
     validated    = new Array(JEUX.length).fill(false);
@@ -183,6 +218,14 @@ function loadFromFirebase() {
         // Timers accumulés → affichage des cartes (pas le live)
         for (let i = 0; i < JEUX.length; i++) {
             timers[i] = data[i] || 0;
+        }
+
+        // Note personnelle
+        const noteEl = document.getElementById('user-note-badge');
+        if (noteEl) {
+            const note = data.note || '';
+            noteEl.textContent = note;
+            noteEl.classList.toggle('hidden', !note);
         }
 
         // État validé par jeu
@@ -552,6 +595,59 @@ function hideConfirm() {
 }
 
 // ============================================================
+//  MODAL PROFIL
+// ============================================================
+function openProfileModal() {
+    if (!currentUser) return;
+    const modal      = document.getElementById('profile-modal');
+    const userConfig = USERS.find(u => u.id === currentUser);
+    modal.classList.remove('hidden', 'closing');
+
+    const avatarEl = document.getElementById('profile-avatar');
+    avatarEl.textContent  = userConfig.initial;
+    avatarEl.style.background = `linear-gradient(135deg, ${userConfig.couleur}, color-mix(in srgb, ${userConfig.couleur} 70%, #000))`;
+    document.getElementById('profile-name').textContent = userConfig.name;
+
+    let savedAccent = ACCENT_DEFAULT;
+    try { savedAccent = JSON.parse(localStorage.getItem(`jdj_accent_${currentUser}`)) || ACCENT_DEFAULT; } catch(e) {}
+    if (!Array.isArray(savedAccent)) savedAccent = ACCENT_DEFAULT;
+    const colorsEl    = document.getElementById('profile-colors');
+    colorsEl.innerHTML = '';
+    ACCENT_COLORS.forEach(pair => {
+        const swatch = document.createElement('button');
+        const isActive = pair[0] === savedAccent[0] && pair[1] === savedAccent[1];
+        swatch.className = 'profile-color-swatch' + (isActive ? ' active' : '');
+        swatch.style.background = `linear-gradient(135deg, ${pair[0]}, ${pair[1]})`;
+        swatch.addEventListener('click', () => {
+            colorsEl.querySelectorAll('.profile-color-swatch').forEach(s => s.classList.remove('active'));
+            swatch.classList.add('active');
+            setAccentColor(pair);
+        });
+        colorsEl.appendChild(swatch);
+    });
+
+    db.ref(`jeudesjeux/${currentUser}/note`).once('value').then(snap => {
+        document.getElementById('profile-note').value = snap.val() || '';
+    });
+}
+
+function closeProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (modal.classList.contains('hidden')) return;
+    modal.classList.add('closing');
+    setTimeout(() => {
+        modal.classList.remove('closing');
+        modal.classList.add('hidden');
+    }, 200);
+}
+
+function setAccentColor(pair) {
+    localStorage.setItem(`jdj_accent_${currentUser}`, JSON.stringify(pair));
+    document.documentElement.style.setProperty('--accent',   pair[0]);
+    document.documentElement.style.setProperty('--accent-2', pair[1]);
+}
+
+// ============================================================
 //  MODAL VISITER
 // ============================================================
 function openVisitModal() {
@@ -657,7 +753,17 @@ function renderVisitModal() {
         });
         card.appendChild(slots);
 
-        container.appendChild(card);
+        const note = (data.note || '').trim();
+        const wrap = document.createElement('div');
+        wrap.className = 'visit-user-wrap';
+        if (note) {
+            const bubble = document.createElement('div');
+            bubble.className = 'visit-bubble';
+            bubble.textContent = note;
+            wrap.appendChild(bubble);
+        }
+        wrap.appendChild(card);
+        container.appendChild(wrap);
     });
 }
 
