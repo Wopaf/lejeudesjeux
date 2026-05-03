@@ -34,9 +34,6 @@
                 <span class="user-choice-name">Morgane</span>
             </button>
         </div>
-        <button class="reset-saves-btn" id="reset-saves-btn" onclick="handleResetSaves()">
-            Réinitialiser les sauvegardes
-        </button>
         <span class="app-version" id="app-version"></span>
     </div>
 </div>
@@ -88,13 +85,15 @@
         <main class="jeux-grid" id="jeux-grid"></main>
     </div>
 
-    <div class="app-total-bar">
-        <span class="app-total-label">Temps total</span>
-        <span class="app-total-val" id="app-total-val">00:00:00</span>
-    </div>
-
     <div class="footer-bar">
         <div class="time-dist" id="time-dist">
+            <div class="time-dist-slots-row">
+                <div class="time-dist-slots" id="time-dist-slots"></div>
+                <div class="time-dist-total-wrap">
+                    <span class="time-dist-total-label">Total</span>
+                    <span class="time-dist-total" id="app-total-val">00:00:00</span>
+                </div>
+            </div>
             <div class="time-dist-bar" id="time-dist-bar"></div>
         </div>
         <div class="footer-info">

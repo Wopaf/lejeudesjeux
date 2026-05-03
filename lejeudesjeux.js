@@ -16,7 +16,7 @@ const db  = firebase.database(app);
 // ============================================================
 //  VERSION — Modifie cette valeur pour changer le numéro de version
 // ============================================================
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 
 // ============================================================
 //  CONFIGURATION — Modifie ce tableau pour personnaliser les jeux
@@ -45,7 +45,9 @@ const USERS = [
 // ============================================================
 let currentUser  = null;
 let selectedJeu  = null;
-let timers       = new Array(JEUX.length).fill(0); // valeurs accumulées Firebase
+let timers       = new Array(JEUX.length).fill(0);    // valeurs accumulées Firebase
+let validated    = new Array(JEUX.length).fill(false); // état validé par jeu
+let firstRender  = false;
 let timerRunning = false;
 let startedAt    = null;   // timestamp (ms) du démarrage de la session en cours
 let liveInterval = null;   // mise à jour du compteur live dans le footer
@@ -154,6 +156,7 @@ function resetApp() {
     _stopLiveInterval();
     currentUser  = null;
     timers       = new Array(JEUX.length).fill(0);
+    validated    = new Array(JEUX.length).fill(false);
     selectedJeu  = null;
     timerRunning = false;
     startedAt    = null;
@@ -167,12 +170,25 @@ function loadFromFirebase() {
         db.ref(`jeudesjeux/${currentUser}`).off('value', fbListener);
     }
 
+    let isFirstLoad = true;
+
     fbListener = db.ref(`jeudesjeux/${currentUser}`).on('value', snap => {
         const data = snap.val() || {};
+
+        if (isFirstLoad) {
+            isFirstLoad = false;
+            firstRender = true;
+        }
 
         // Timers accumulés → affichage des cartes (pas le live)
         for (let i = 0; i < JEUX.length; i++) {
             timers[i] = data[i] || 0;
+        }
+
+        // État validé par jeu
+        const validatedData = data.validated || {};
+        for (let i = 0; i < JEUX.length; i++) {
+            validated[i] = validatedData[i] === true;
         }
 
         // Jeu sélectionné (ne pas écraser pendant une session active)
@@ -233,11 +249,12 @@ function renderJeux() {
     grid.innerHTML = '';
 
     JEUX.forEach((jeu, i) => {
-        const isSelected = i === selectedJeu;
-        const isRunning  = isSelected && timerRunning;
+        const isSelected  = i === selectedJeu;
+        const isRunning   = isSelected && timerRunning;
+        const isValidated = validated[i];
 
         const card = document.createElement('div');
-        card.className = ['game-card', isSelected ? 'selected' : '', isRunning ? 'running' : '']
+        card.className = ['game-card', isSelected ? 'selected' : '', isRunning ? 'running' : '', isValidated ? 'validated' : '']
             .filter(Boolean).join(' ');
         card.dataset.index = i;
         if (isSelected) card.style.setProperty('--card-accent', jeu.couleur);
@@ -250,47 +267,173 @@ function renderJeux() {
             <div class="game-card-inner">
                 <div class="game-card-img" style="background:${jeu.couleur}11;border-color:${jeu.couleur}33">
                     ${imgContent}
-                    ${isRunning ? '<div class="game-card-running-dot"></div>' : ''}
+                    ${isRunning   ? '<div class="game-card-running-dot"></div>' : ''}
+                    ${isValidated ? '<div class="game-card-check"></div>' : ''}
                 </div>
                 <span class="game-card-name">${jeu.nom}</span>
-                <span class="game-card-timer">${formatTime(timers[i])}</span>
+                <span class="game-card-timer ${isValidated ? 'validated' : ''}">${formatTime(timers[i])}</span>
             </div>
+            <div class="game-card-swipe-overlay"></div>
         `;
 
-        card.addEventListener('click', () => selectJeu(i));
+        // Clic → sélection (annulé si un swipe vient d'avoir lieu)
+        let cardSwiped = false;
+        card.addEventListener('click', () => {
+            if (cardSwiped) { cardSwiped = false; return; }
+            selectJeu(i);
+        });
+
+        // Swipe → validation
+        let txStart = null;
+        let tyStart = null;
+        let axis    = null;
+        const overlay = card.querySelector('.game-card-swipe-overlay');
+
+        if (firstRender) {
+            card.style.animation = `cardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${400 + i * 70}ms both`;
+        }
+
+        card.addEventListener('touchstart', (e) => {
+            txStart    = e.touches[0].clientX;
+            tyStart    = e.touches[0].clientY;
+            axis       = null;
+            cardSwiped = false;
+            card.style.animation = '';
+            card.classList.add('swiping');
+        }, { passive: true });
+
+        card.addEventListener('touchmove', (e) => {
+            if (txStart === null) return;
+            const dx = e.touches[0].clientX - txStart;
+            const dy = e.touches[0].clientY - tyStart;
+            if (!axis) {
+                if (Math.abs(dx) > Math.abs(dy) + 4) axis = 'h';
+                else if (Math.abs(dy) > Math.abs(dx) + 4) axis = 'v';
+                else return;
+            }
+            if (axis === 'v') { card.classList.remove('swiping'); return; }
+            const clamped = Math.max(-110, Math.min(110, dx));
+            card.style.transform = `translateX(${clamped}px)`;
+            const alpha = Math.min(Math.abs(clamped) / 110 * 0.45, 0.45);
+            overlay.style.background = clamped < 0
+                ? `rgba(34,197,94,${alpha})`
+                : `rgba(239,68,68,${alpha})`;
+        }, { passive: true });
+
+        const _endSwipe = (changedX) => {
+            const dx = changedX - txStart;
+            card.classList.remove('swiping');
+            card.style.transform   = '';
+            overlay.style.background = '';
+            if (axis === 'h' && Math.abs(dx) >= 60) {
+                cardSwiped = true;
+                setValidated(i, dx < 0);
+            }
+            txStart = null;
+            tyStart = null;
+            axis    = null;
+        };
+
+        card.addEventListener('touchend',    (e) => _endSwipe(e.changedTouches[0].clientX), { passive: true });
+        card.addEventListener('touchcancel', ()  => _endSwipe(txStart ?? 0));
+
+        // Simulation souris (même logique)
+        card.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            txStart    = e.clientX;
+            tyStart    = e.clientY;
+            axis       = null;
+            cardSwiped = false;
+            card.style.animation = '';
+            card.classList.add('swiping');
+
+            const onMove = (e) => {
+                if (txStart === null) return;
+                const dx = e.clientX - txStart;
+                const dy = e.clientY - tyStart;
+                if (!axis) {
+                    if (Math.abs(dx) > Math.abs(dy) + 4) axis = 'h';
+                    else if (Math.abs(dy) > Math.abs(dx) + 4) axis = 'v';
+                    else return;
+                }
+                if (axis === 'v') { card.classList.remove('swiping'); return; }
+                const clamped = Math.max(-110, Math.min(110, dx));
+                card.style.transform = `translateX(${clamped}px)`;
+                const alpha = Math.min(Math.abs(clamped) / 110 * 0.45, 0.45);
+                overlay.style.background = clamped < 0
+                    ? `rgba(34,197,94,${alpha})`
+                    : `rgba(239,68,68,${alpha})`;
+            };
+            const onUp = (e) => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                _endSwipe(e.clientX);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+
         grid.appendChild(card);
     });
 
+    firstRender = false;
     updateDistribution();
     updateTotalTime();
 }
 
+function setValidated(i, bool) {
+    if (validated[i] === bool) return;
+    validated[i] = bool;
+    db.ref(`jeudesjeux/${currentUser}/validated/${i}`)
+      .set(bool ? true : null)
+      .catch(console.error);
+    renderJeux();
+}
+
 function updateDistribution() {
-    const bar = document.getElementById('time-dist-bar');
+    const bar   = document.getElementById('time-dist-bar');
+    const slots = document.getElementById('time-dist-slots');
     if (!bar) return;
 
+    // Barre de distribution
     const total = timers.reduce((sum, t) => sum + t, 0);
     bar.innerHTML = '';
-    if (total === 0) return;
+    if (total > 0) {
+        JEUX.forEach((jeu, i) => {
+            if (timers[i] === 0) return;
+            const pct = (timers[i] / total) * 100;
+            const seg = document.createElement('div');
+            seg.className = 'time-dist-segment' + (i === selectedJeu && timerRunning ? ' active' : '');
+            seg.style.width      = pct + '%';
+            seg.style.background = jeu.couleur;
 
-    JEUX.forEach((jeu, i) => {
-        if (timers[i] === 0) return;
-        const pct = (timers[i] / total) * 100;
-        const seg = document.createElement('div');
-        seg.className = 'time-dist-segment' + (i === selectedJeu && timerRunning ? ' active' : '');
-        seg.style.width      = pct + '%';
-        seg.style.background = jeu.couleur;
+            seg.addEventListener('click', (e) => {
+                e.stopPropagation();
+                bar.querySelectorAll('.time-dist-segment').forEach(s => s.classList.remove('focused'));
+                bar.classList.add('has-focus');
+                seg.classList.add('focused');
+                showTooltip(e.clientX, e.clientY - 10, jeu.nom, formatTime(timers[i]));
+            });
 
-        seg.addEventListener('click', (e) => {
-            e.stopPropagation();
-            bar.querySelectorAll('.time-dist-segment').forEach(s => s.classList.remove('focused'));
-            bar.classList.add('has-focus');
-            seg.classList.add('focused');
-            showTooltip(e.clientX, e.clientY - 10, jeu.nom, formatTime(timers[i]));
+            bar.appendChild(seg);
         });
+    }
 
-        bar.appendChild(seg);
-    });
+    // Slots de validation
+    if (slots) {
+        slots.innerHTML = '';
+        JEUX.forEach((jeu, i) => {
+            const slot = document.createElement('div');
+            const isDone = validated[i];
+            slot.className = 'visit-slot' + (isDone ? ' done' : '');
+            if (isDone) {
+                slot.style.borderColor     = jeu.couleur;
+                slot.style.boxShadow       = `0 0 6px ${jeu.couleur}88`;
+                slot.style.backgroundImage = `url('${jeu.img}')`;
+            }
+            slots.appendChild(slot);
+        });
+    }
 }
 
 function updateFooter() {
@@ -301,7 +444,13 @@ function updateFooter() {
     const btnLabel = document.getElementById('launch-btn-label');
 
     if (selectedJeu !== null) {
-        nameEl.textContent = JEUX[selectedJeu].nom;
+        const newName = JEUX[selectedJeu].nom;
+        if (nameEl.textContent !== newName) {
+            nameEl.textContent = newName;
+            nameEl.classList.remove('name-enter');
+            void nameEl.offsetWidth; // force reflow
+            nameEl.classList.add('name-enter');
+        }
         btn.disabled = false;
 
         if (timerRunning && startedAt !== null) {
@@ -490,6 +639,23 @@ function renderVisitModal() {
             noData.textContent = 'Aucune donnée';
             card.appendChild(noData);
         }
+
+        // Slots de validation (1 par jeu)
+        const validatedData = data.validated || {};
+        const slots = document.createElement('div');
+        slots.className = 'visit-slots';
+        JEUX.forEach((jeu, i) => {
+            const slot = document.createElement('div');
+            const isDone = validatedData[i] === true;
+            slot.className = 'visit-slot' + (isDone ? ' done' : '');
+            if (isDone) {
+                slot.style.borderColor     = jeu.couleur;
+                slot.style.boxShadow       = `0 0 6px ${jeu.couleur}88`;
+                slot.style.backgroundImage = `url('${jeu.img}')`;
+            }
+            slots.appendChild(slot);
+        });
+        card.appendChild(slots);
 
         container.appendChild(card);
     });
