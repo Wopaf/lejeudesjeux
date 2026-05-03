@@ -16,19 +16,19 @@ const db  = firebase.database(app);
 // ============================================================
 //  VERSION — Modifie cette valeur pour changer le numéro de version
 // ============================================================
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 
 // ============================================================
 //  CONFIGURATION — Modifie ce tableau pour personnaliser les jeux
 // ============================================================
 const JEUX = [
-    { nom: "Super Meat Boy",           img: "medias-lejeudesjeux/meatboy.png",      couleur: "#db2727" },
-    { nom: "Dungeon Siège",            img: "medias-lejeudesjeux/dungeonsiege.png", couleur: "#ecc349" },
-    { nom: "Castlevania: Aria of Sorrow", img: "medias-lejeudesjeux/castelvania.png", couleur: "#4d67ff" },
-    { nom: "Kingdom Hearts III",       img: "medias-lejeudesjeux/kingdown.png",     couleur: "#a748ef" },
-    { nom: "Have a Nice Death",        img: "medias-lejeudesjeux/have.png",         couleur: "#454545" },
-    { nom: "Dead Island 2",            img: "medias-lejeudesjeux/dead.png",         couleur: "#33c0ad" },
-    { nom: "Gorogoa",                  img: "medias-lejeudesjeux/gorogoa.png",      couleur: "#4bc561" },
+    { nom: "Super Meat Boy",             img: "medias-lejeudesjeux/meatboy.png",      bg: "medias-lejeudesjeux/bg-meatboy.png",      couleur: "#db2727" },
+    { nom: "Dungeon Siège",              img: "medias-lejeudesjeux/dungeonsiege.png", bg: "medias-lejeudesjeux/bg-dungeonsiege.png", couleur: "#ecc349" },
+    { nom: "Castlevania: Aria of Sorrow",img: "medias-lejeudesjeux/castelvania.png", bg: "medias-lejeudesjeux/bg-castelvania.png",  couleur: "#4d67ff" },
+    { nom: "Kingdom Hearts III",         img: "medias-lejeudesjeux/kingdown.png",     bg: "medias-lejeudesjeux/bg-kingdown.png",     couleur: "#a748ef" },
+    { nom: "Have a Nice Death",          img: "medias-lejeudesjeux/have.png",         bg: "medias-lejeudesjeux/bg-have.png",         couleur: "#454545" },
+    { nom: "Dead Island 2",              img: "medias-lejeudesjeux/dead.png",         bg: "medias-lejeudesjeux/bg-dead.png",         couleur: "#33c0ad" },
+    { nom: "Gorogoa",                    img: "medias-lejeudesjeux/gorogoa.png",      bg: "medias-lejeudesjeux/bg-gorogoa.png",      couleur: "#4bc561" },
 ];
 
 // ============================================================
@@ -65,6 +65,7 @@ let timerRunning = false;
 let startedAt    = null;   // timestamp (ms) du démarrage de la session en cours
 let liveInterval = null;   // mise à jour du compteur live dans le footer
 let fbListener    = null;
+let _skipNextRender = false;
 let visitData     = {};  // données lues à l'ouverture de la modal Visiter
 let tooltipTimeout     = null;
 let tooltipHideTimeout = null;
@@ -256,7 +257,11 @@ function loadFromFirebase() {
             startedAt    = null;
         }
 
-        renderJeux();
+        if (_skipNextRender) {
+            _skipNextRender = false;
+        } else {
+            renderJeux();
+        }
         updateFooter();
     });
 }
@@ -480,6 +485,8 @@ function updateDistribution() {
 }
 
 function updateFooter() {
+    document.getElementById('grid-overlay').classList.toggle('active', timerRunning);
+
     const nameEl   = document.getElementById('footer-selected-name');
     const timerEl  = document.getElementById('footer-timer-val');
     const btn      = document.getElementById('launch-btn');
@@ -494,6 +501,8 @@ function updateFooter() {
             void nameEl.offsetWidth; // force reflow
             nameEl.classList.add('name-enter');
         }
+        const bgPath = JEUX[selectedJeu].bg;
+        btn.style.setProperty('--launch-bg', bgPath ? `url(${bgPath})` : 'none');
         btn.disabled = false;
 
         if (timerRunning && startedAt !== null) {
@@ -513,6 +522,7 @@ function updateFooter() {
     } else {
         nameEl.textContent  = '—';
         timerEl.textContent = '00:00:00';
+        btn.style.setProperty('--launch-bg', 'none');
         btn.disabled = true;
         btn.classList.remove('running');
         timerEl.classList.remove('running');
@@ -526,9 +536,12 @@ function selectJeu(index) {
     if (timerRunning) return;
     selectedJeu = index;
     localStorage.setItem('jdj_selected', index);
+    _skipNextRender = true;
     db.ref(`jeudesjeux/${currentUser}/selectedJeu`).set(index)
       .catch(err => console.error('Firebase error:', err));
-    renderJeux();
+    document.querySelectorAll('#jeux-grid .game-card').forEach(card => {
+        card.classList.toggle('selected', parseInt(card.dataset.index) === index);
+    });
     updateFooter();
 }
 
