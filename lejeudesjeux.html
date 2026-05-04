@@ -33,6 +33,10 @@
                 <span class="user-choice-avatar">Mo</span>
                 <span class="user-choice-name">Morgane</span>
             </button>
+            <button class="user-choice-btn" data-user="tom">
+                <span class="user-choice-avatar">T</span>
+                <span class="user-choice-name">Tom</span>
+            </button>
         </div>
         <span class="app-version" id="app-version"></span>
     </div>
@@ -60,6 +64,9 @@
                 <textarea class="profile-note" id="profile-note" placeholder="Écris quelque chose…"></textarea>
             </div>
         </div>
+        <div class="profile-footer">
+            <button class="profile-logout-btn" id="profile-logout-btn">Se déconnecter</button>
+        </div>
     </div>
 </div>
 
@@ -75,7 +82,7 @@
         </div>
         <div class="confirm-btns">
             <button class="confirm-btn confirm-btn--cancel" id="confirm-cancel">Annuler</button>
-            <button class="confirm-btn confirm-btn--ok" id="confirm-ok">▶ &nbsp;Lancer</button>
+            <button class="confirm-btn confirm-btn--ok" id="confirm-ok"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M320-273v-414q0-17 12-28.5t28-11.5q5 0 10.5 1.5T381-721l326 207q9 6 13.5 15t4.5 19q0 10-4.5 19T707-446L381-239q-5 3-10.5 4.5T360-233q-16 0-28-11.5T320-273Zm80-207Zm0 134 210-134-210-134v268Z"/></svg> Lancer</button>
         </div>
     </div>
 </div>
@@ -129,16 +136,18 @@
         </div>
         <div class="footer-info">
             <div class="footer-selected-wrap">
-                <span class="footer-label">Jeu Sélectionné</span>
                 <span class="footer-selected-name" id="footer-selected-name">—</span>
             </div>
             <div class="footer-timer-wrap">
-                <span class="footer-label">Temps</span>
-                <span class="footer-timer-val" id="footer-timer-val">00:00:00</span>
+                <div class="footer-timer-row">
+                    <span class="footer-timer-val" id="footer-timer-val">00:00:00</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M400-840q-17 0-28.5-11.5T360-880q0-17 11.5-28.5T400-920h160q17 0 28.5 11.5T600-880q0 17-11.5 28.5T560-840H400Zm108.5 428.5Q520-423 520-440v-160q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600v160q0 17 11.5 28.5T480-400q17 0 28.5-11.5Zm-168 303Q275-137 226-186t-77.5-114.5Q120-366 120-440t28.5-139.5Q177-645 226-694t114.5-77.5Q406-800 480-800q62 0 119 20t107 58l28-28q11-11 28-11t28 11q11 11 11 28t-11 28l-28 28q38 50 58 107t20 119q0 74-28.5 139.5T734-186q-49 49-114.5 77.5T480-80q-74 0-139.5-28.5ZM678-242q82-82 82-198t-82-198q-82-82-198-82t-198 82q-82 82-82 198t82 198q82 82 198 82t198-82ZM480-440Z"/></svg>
+                </div>
             </div>
         </div>
         <button class="launch-btn" id="launch-btn" disabled>
-            <span id="launch-btn-icon">▶</span>
+            <span class="launch-btn-bg" id="launch-btn-bg"></span>
+            <span id="launch-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M320-273v-414q0-17 12-28.5t28-11.5q5 0 10.5 1.5T381-721l326 207q9 6 13.5 15t4.5 19q0 10-4.5 19T707-446L381-239q-5 3-10.5 4.5T360-233q-16 0-28-11.5T320-273Zm80-207Zm0 134 210-134-210-134v268Z"/></svg></span>
             <span id="launch-btn-label">Lancer le timer</span>
         </button>
     </div>
