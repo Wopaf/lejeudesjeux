@@ -41,19 +41,95 @@ button {
 
 .hidden { display: none !important; }
 
-/* ── Fondu au noir à l'ouverture ── */
-.page-fade {
+/* ── Loader modal ── */
+.loader-modal {
     position: fixed;
     inset: 0;
-    background: #000;
-    z-index: 9999;
+    z-index: 10000;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                filter 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.loader-modal.hiding {
+    opacity: 0;
     pointer-events: none;
-    animation: pageFadeOut 0.9s ease 0.1s forwards;
+    transform: scale(1.12);
+    filter: blur(12px);
+}
+.loader-modal.hidden { display: none !important; }
+
+.loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
 }
 
-@keyframes pageFadeOut {
-    from { opacity: 1; }
-    to   { opacity: 0; visibility: hidden; }
+.loader-rings {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.loader-glow {
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
+    animation: loaderGlowPulse 2s ease-in-out infinite;
+}
+
+@keyframes loaderGlowPulse {
+    0%, 100% { opacity: 0.5; transform: scale(0.85); }
+    50%       { opacity: 1;   transform: scale(1.15); }
+}
+
+.loader-ring {
+    position: absolute;
+    border-radius: 50%;
+    border-style: solid;
+    border-color: transparent;
+}
+
+.loader-ring--outer {
+    inset: 0;
+    border-width: 3px;
+    border-top-color:    var(--accent);
+    border-right-color:  color-mix(in srgb, var(--accent) 45%, transparent);
+    border-bottom-color: color-mix(in srgb, var(--accent) 10%, transparent);
+    animation: loaderSpin 1.8s linear infinite;
+    filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.loader-ring--inner {
+    inset: 16px;
+    border-width: 2px;
+    border-bottom-color: var(--accent-2);
+    border-left-color:   color-mix(in srgb, var(--accent-2) 45%, transparent);
+    border-top-color:    color-mix(in srgb, var(--accent-2) 10%, transparent);
+    animation: loaderSpin 1.2s linear infinite reverse;
+    filter: drop-shadow(0 0 5px var(--accent-2));
+}
+
+@keyframes loaderSpin {
+    to { transform: rotate(360deg); }
+}
+
+.loader-title {
+    font-family: var(--font-title);
+    font-size: 1rem;
+    font-weight: 900;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.5px;
+}
+
+.loader-version {
+    position: absolute;
+    bottom: 24px;
 }
 
 /* ============================================================
@@ -486,6 +562,9 @@ button {
     inset: 0;
     z-index: 2000;
     display: flex;
+    width: 100%;
+    max-width: 500px;
+    justify-self: center;
 }
 
 .visit-modal.hidden { display: none !important; }
@@ -509,11 +588,21 @@ button {
     background: var(--bg);
     display: flex;
     flex-direction: column;
-    animation: confirmPop 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: visitPanelIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes visitPanelIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 .visit-modal.closing .visit-panel {
-    animation: confirmPopOut 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: visitPanelOut 0.2s cubic-bezier(0.55, 0, 0.78, 0) forwards;
+}
+
+@keyframes visitPanelOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(16px); }
 }
 
 @keyframes fadeOut {
@@ -533,7 +622,9 @@ button {
     justify-content: space-between;
     background-color: var(--bg-card);
     padding: 10px 10px 10px 20px;
+    z-index: 90;
     border-bottom: 1px solid rgba(255,255,255,0.07);
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.5);
 }
 
 .visit-title {
@@ -570,15 +661,23 @@ button {
 
 .visit-users::-webkit-scrollbar { display: none; }
 
+@keyframes visitCardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 .visit-user-card {
+    opacity: 0;
+    animation: visitCardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+    min-width: 200px;
     width: 100%;
+    max-width: 600px;
     padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
     box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.466);
 }
 
@@ -590,13 +689,14 @@ button {
 .visit-user-header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     padding: 12px 16px;
-    margin: -14px -16px 10px;
+    margin: -14px -16px 0;
     border-radius: 12px 12px 0 0;
     position: relative;
     overflow: hidden;
     z-index: 0;
+    cursor: pointer;
     background: linear-gradient(135deg,
         color-mix(in srgb, var(--visit-a1) 30%, transparent),
         color-mix(in srgb, var(--visit-a2) 30%, transparent)
@@ -613,6 +713,33 @@ button {
     opacity: 0.1;
     pointer-events: none;
 }
+
+.visit-chevron {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    color: rgba(255,255,255,0.4);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s;
+}
+
+.visit-user-header:hover .visit-chevron { color: rgba(255,255,255,0.8); }
+
+.visit-user-card.expanded .visit-chevron { transform: rotate(90deg); }
+
+.visit-card-body {
+    overflow: hidden;
+    max-height: 0;
+    margin-top: 0;
+    transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                margin-top  0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.visit-user-card.expanded .visit-card-body {
+    max-height: 40px;
+    margin-top: 10px;
+}
+
+.visit-slots-row { margin-top: 10px; }
 
 .visit-user-avatar {
     flex-shrink: 0;
@@ -645,6 +772,7 @@ button {
     font-size: 0.88rem;
     font-weight: 700;
     color: var(--text);
+    margin-left: -4px;
 }
 
 .visit-user-status {
@@ -681,6 +809,7 @@ button {
     display: flex;
     height: 20px;
     border-radius: 6px;
+    margin-top: 8px;
     overflow: hidden;
     background: rgba(255,255,255,0.06);
     box-shadow: inset 0 2px 6px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04);
@@ -777,6 +906,8 @@ button {
 }
 
 .visit-bubble {
+    opacity: 0;
+    animation: visitCardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     position: relative;
     background: linear-gradient(135deg,
         color-mix(in srgb, var(--visit-a1) 20%, transparent),
@@ -791,6 +922,7 @@ button {
     max-width: 90%;
     margin-left: 8px;
     margin-bottom: 8px;
+    margin-top: 4px;
     word-break: break-word;
 }
 

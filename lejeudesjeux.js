@@ -85,7 +85,13 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('app-version').textContent = `v${VERSION}`;
+    const loader = document.getElementById('loader-modal');
+    setTimeout(() => {
+        loader.classList.add('hiding');
+        setTimeout(() => loader.classList.add('hidden'), 600);
+    }, 1000);
+
+    document.querySelectorAll('.app-version').forEach(el => el.textContent = `v${VERSION}`);
 
     document.querySelectorAll('.user-choice-btn').forEach(btn => {
         btn.addEventListener('click', () => setUser(btn.dataset.user));
@@ -351,7 +357,7 @@ function renderJeux() {
         const overlay = card.querySelector('.game-card-swipe-overlay');
 
         if (firstRender) {
-            card.style.animation = `cardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${400 + i * 70}ms both`;
+            card.style.animation = `cardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${950 + i * 50}ms both`;
         }
 
         card.addEventListener('touchstart', (e) => {
@@ -704,12 +710,11 @@ function openVisitModal() {
     modal.classList.remove('hidden', 'closing');
     visitData = {};
 
-    USERS.forEach(user => {
-        db.ref(`jeudesjeux/${user.id}`).once('value', snap => {
+    Promise.all(USERS.map(user =>
+        db.ref(`jeudesjeux/${user.id}`).once('value').then(snap => {
             visitData[user.id] = snap.val() || {};
-            renderVisitModal();
-        });
-    });
+        })
+    )).then(() => renderVisitModal());
 }
 
 function closeVisitModal() {
@@ -727,7 +732,7 @@ function renderVisitModal() {
     const container = document.getElementById('visit-users');
     container.innerHTML = '';
 
-    USERS.forEach(user => {
+    USERS.forEach((user, index) => {
         const data        = visitData[user.id] || {};
         const userTimers  = JEUX.map((_, i) => data[i] || 0);
         const total       = userTimers.reduce((sum, t) => sum + t, 0);
@@ -746,9 +751,13 @@ function renderVisitModal() {
         card.className = 'visit-user-card' + (isPlaying ? ' is-playing' : '');
         card.style.setProperty('--visit-a1', accent[0]);
         card.style.setProperty('--visit-a2', accent[1]);
+        card.style.animationDelay = `${0.2 + index * 0.09}s`;
         const bgStyle = selJeu?.bg ? `--visit-bg:url(${selJeu.bg});` : '';
         card.innerHTML = `
             <div class="visit-user-header" style="${bgStyle}">
+                <svg class="visit-chevron" xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor">
+                    <path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/>
+                </svg>
                 <div class="visit-user-info">
                     <span class="visit-user-name">${user.name}</span>
                     <span class="visit-user-status ${statusClass}">
@@ -758,7 +767,12 @@ function renderVisitModal() {
                 </div>
             </div>
         `;
+        card.querySelector('.visit-user-header').addEventListener('click', () => {
+            card.classList.toggle('expanded');
+        });
 
+        const body = document.createElement('div');
+        body.className = 'visit-card-body';
         if (total > 0) {
             const bar = document.createElement('div');
             bar.className = 'visit-dist-bar';
@@ -779,13 +793,14 @@ function renderVisitModal() {
                 });
                 bar.appendChild(seg);
             });
-            card.appendChild(bar);
+            body.appendChild(bar);
         } else {
             const noData = document.createElement('div');
             noData.className   = 'visit-no-data';
             noData.textContent = 'Aucune donnée';
-            card.appendChild(noData);
+            body.appendChild(noData);
         }
+        card.appendChild(body);
 
         // Slots de validation + total
         const validatedData = data.validated || {};
@@ -826,6 +841,8 @@ function renderVisitModal() {
             bubble.style.setProperty('--visit-a1', accent[0]);
             bubble.style.setProperty('--visit-a2', accent[1]);
             bubble.textContent = note;
+            const lastCardEnd = 0.01 + (USERS.length - 1) * 0.09 + 0.35;
+            bubble.style.animationDelay = `${lastCardEnd + index * 0.1}s`;
             wrap.appendChild(bubble);
         }
         wrap.appendChild(card);
