@@ -27,10 +27,11 @@ const JEUX = [
     { nom: "Super Meat Boy",             img: "medias-lejeudesjeux/meatboy.png",      bg: "medias-lejeudesjeux/bg-meatboy.png",      couleur: "#db2727" },
     { nom: "Dungeon Siège",              img: "medias-lejeudesjeux/dungeonsiege.png", bg: "medias-lejeudesjeux/bg-dungeonsiege.png", couleur: "#ecc349" },
     { nom: "Castlevania: Aria of Sorrow",img: "medias-lejeudesjeux/castelvania.png", bg: "medias-lejeudesjeux/bg-castelvania.png",  couleur: "#4d67ff" },
-    { nom: "Kingdom Hearts III",         img: "medias-lejeudesjeux/kingdown.png",     bg: "medias-lejeudesjeux/bg-kingdown.png",     couleur: "#a748ef" },
+    { nom: "Kingdom Hearts III",         img: "medias-lejeudesjeux/kingdown.png",     bg: "medias-lejeudesjeux/bg-kingdown.png",     couleur: "#a748ef", hidden: true },
     { nom: "Have a Nice Death",          img: "medias-lejeudesjeux/have.png",         bg: "medias-lejeudesjeux/bg-have.png",         couleur: "#454545" },
     { nom: "Dead Island 2",              img: "medias-lejeudesjeux/dead.png",         bg: "medias-lejeudesjeux/bg-dead.png",         couleur: "#33c0ad" },
     { nom: "Gorogoa",                    img: "medias-lejeudesjeux/gorogoa.png",      bg: "medias-lejeudesjeux/bg-gorogoa.png",      couleur: "#4bc561" },
+    { nom: "Factorio",                   img: "medias-lejeudesjeux/factorio.png",     bg: "medias-lejeudesjeux/bg-factorio.png",     couleur: "#e8a020" },
 ];
 
 // ============================================================
@@ -316,6 +317,8 @@ function renderJeux() {
     grid.innerHTML = '';
 
     JEUX.forEach((jeu, i) => {
+        if (jeu.hidden) return;
+
         const isSelected  = i === selectedJeu;
         const isRunning   = isSelected && timerRunning;
         const isValidated = validated[i];
@@ -467,7 +470,7 @@ function updateDistribution() {
     bar.innerHTML = '';
     if (total > 0) {
         JEUX.forEach((jeu, i) => {
-            if (timers[i] === 0) return;
+            if (jeu.hidden || timers[i] === 0) return;
             const pct = (timers[i] / total) * 100;
             const seg = document.createElement('div');
             seg.className = 'time-dist-segment' + (i === selectedJeu && timerRunning ? ' active' : '');
@@ -490,6 +493,7 @@ function updateDistribution() {
     if (slots) {
         slots.innerHTML = '';
         JEUX.forEach((jeu, i) => {
+            if (jeu.hidden) return;
             const slot = document.createElement('div');
             const isDone = validated[i];
             slot.className = 'visit-slot' + (isDone ? ' done' : '');
@@ -810,6 +814,7 @@ function renderVisitModal() {
         const slots = document.createElement('div');
         slots.className = 'visit-slots';
         JEUX.forEach((jeu, i) => {
+            if (jeu.hidden) return;
             const slot = document.createElement('div');
             const isDone = validatedData[i] === true;
             slot.className = 'visit-slot' + (isDone ? ' done' : '');
@@ -841,8 +846,7 @@ function renderVisitModal() {
             bubble.style.setProperty('--visit-a1', accent[0]);
             bubble.style.setProperty('--visit-a2', accent[1]);
             bubble.textContent = note;
-            const lastCardEnd = 0.01 + (USERS.length - 1) * 0.09 + 0.35;
-            bubble.style.animationDelay = `${lastCardEnd + index * 0.1}s`;
+            bubble.style.animationDelay = `${0.2 + index * 0.09}s`;
             wrap.appendChild(bubble);
         }
         wrap.appendChild(card);

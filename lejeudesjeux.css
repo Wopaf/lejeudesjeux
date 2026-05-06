@@ -905,9 +905,14 @@ button {
     gap: 0;
 }
 
+@keyframes bubbleGrowIn {
+    from { opacity: 0; clip-path: inset(0 100% 0 0 round 12px); }
+    to   { opacity: 1; clip-path: inset(0 0% 0 0 round 12px); }
+}
+
 .visit-bubble {
     opacity: 0;
-    animation: visitCardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: bubbleGrowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     position: relative;
     background: linear-gradient(135deg,
         color-mix(in srgb, var(--visit-a1) 20%, transparent),
@@ -915,14 +920,14 @@ button {
     );
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 12px 12px 12px 2px;
-    padding: 8px 12px;
+    padding: 4px 12px;
     font-size: 0.8rem;
     color: rgba(255,255,255,0.85);
     line-height: 1.4;
     max-width: 90%;
-    margin-left: 8px;
-    margin-bottom: 8px;
-    margin-top: 4px;
+    margin-left: 4px;
+    margin-bottom: 6px;
+    margin-top: 0px;
     word-break: break-word;
 }
 
